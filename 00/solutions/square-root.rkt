@@ -6,7 +6,7 @@
 (define (my-sqrt x)
   (define (newtonche i)
     (if (<
-         (- (* i i) x)
+         (abs (- (* i i) x))
          0.0001) ; tochnostta
         i
         (newtonche
@@ -15,5 +15,5 @@
           (/
            (- (* i i) x)
            (* 2 i))))))
-  (newtonche (/ x 2)))
+  (newtonche 200))
 
