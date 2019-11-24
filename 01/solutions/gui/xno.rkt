@@ -56,7 +56,7 @@
         (unless curr-x-player
           (ai-move)))
 
-      (let* ((aimove (play (board->list board-state) curr-player))
+      (let* ((aimove (play (board->list board-state) (symbol curr-player)))
              (aix (car aimove))
              (aiy (cdr aimove)))
         (press-ai aix aiy))))
