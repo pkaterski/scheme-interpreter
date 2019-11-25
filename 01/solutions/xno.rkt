@@ -120,9 +120,33 @@
                  (gen-boards pos curr-sym))
                )))
   
-; (minimax '((#f #f #f)
-;            (#f #f #f)
-;            (#f #f #f)) "X" "O")
+(define (minimax-fast pos alpha beta max-sym curr-sym)
+  (define (helper poss ex-eval alpha beta is-max)
+    (cond ((null? poss) ex-eval)
+          ((<= beta alpha) ex-eval)
+          (else (let ((evalu (minimax-fast 
+                               (car poss) 
+                               alpha 
+                               beta 
+                               max-sym 
+                               (oponent curr-sym))))
+                  (helper 
+                    (cdr poss) 
+                    (if is-max (max ex-eval evalu) (min ex-eval evalu))
+                    (if is-max (max alpha evalu) alpha) 
+                    (if is-max beta (min beta evalu))
+                    is-max)
+                  ))))
+  (if (not (equal? (gen-score pos max-sym) #f))
+           (gen-score pos max-sym)
+           (if (equal? max-sym curr-sym)
+               (helper (gen-boards pos curr-sym) -100 alpha beta #t)
+               (helper (gen-boards pos curr-sym) 100 alpha beta #f)
+               )))
+
+; (minimax-fast '((#f #f #f)
+;                 (#f #f #f)
+;                 (#f #f #f)) -100 100 "X" "X")
 
 
 (define (gen-pos-score b curr-sym)
@@ -130,19 +154,21 @@
     (lambda (pair) 
          (cons
            pair
-           (minimax 
+           (minimax-fast 
              (place 
                b 
                (car pair) 
                (cdr pair) 
                curr-sym) 
+             -100
+             100
              curr-sym 
              (oponent curr-sym)))) 
     (gen-positions b)))
 
- (gen-pos-score '(("X" #f #f)
-                  (#f #f #f)
-                  (#f #f "O")) "X")
+; (gen-pos-score '(("X" #f #f)
+;                  (#f #f #f)
+;                  (#f #f "O")) "X")
 
 (define (play b curr-sym)
   (car (foldr 
