@@ -8,59 +8,33 @@
 
 (define (id x) x)
 
-; winner implementation that only detects draws right now.
-; Put your own implementation here!
-(define (winner b)
-  (define (all-sym sym) (lambda (xs) (all? (lambda (x) (equal? x sym)) xs)))
+; takes a symbol `sym`
+; returns a function whuch checks if all the symbols in a list are equal to `sym`
+(define (all-sym sym) (lambda (xs) (all? (lambda (x) (equal? x sym)) xs)))
+
+; takes a board `b` and a symbol `sym`
+; checks if there is a winning streak of the given symbol somewhere in the board
+(define (win-streak b sym)
   (if (any? id (append 
-                 (map (all-sym "X") (rows b)) 
-                 (map (all-sym "X") (cols b)) 
-                 (map (all-sym "X") (diags b))))
-    "X"
-      
-    (if (any? id (append 
-                   (map (all-sym "O") (rows b)) 
-                   (map (all-sym "O") (cols b)) 
-                   (map (all-sym "O") (diags b))))
-      "O"
-      (if (any? id (map 
-                     (lambda (xs) 
-                       (any? (lambda (x) (equal? x #f)) xs)) 
-                     b))
-          #f
-          "D"))))
+               (map (all-sym sym) (rows b)) 
+               (map (all-sym sym) (cols b)) 
+               (map (all-sym sym) (diags b))))
+  #t
+  #f))
 
-;(winner '((#f #f #f)
-;          (#f #f #f)
-;          (#f #f #f))) ;-- #f
-;
-; (winner '(("X" "O" "X")
-;           ("O" "X" "O")
-;           ("X" "O" "X"))) ;-- "X"
-;
-; (winner '(("O" "O" "O")
-;           ("X" "X" #f)
-;           (#f #f "X"))) ;-- "O"
-;
-; (winner '(("O" #f "O")
-;           (#f "O" #f)
-;           ("X" "X" "X"))) ;-- "X"
-;
-; (winner '(("X" "O" "O")
-;           ("O" "X" "O")
-;           ("O" "X" "X"))) ;-- "X"
-;
-; (winner '(("X" "O" "X")
-;           ("O" "X" "O")
-;           ("O" "X" "O"))) ;-- "D"
-;
-; (winner '(("X" "O" "X")
-;           ("O" "O" "X")
-;           ("O" "X" #f))) ;-- #f
+; takes a board `b`
+; checks if there are any empty spots on the board
+(define (any-empty b)
+  (any? id (map (lambda (xs) (any? (lambda (x) (equal? x #f)) xs)) b)))
 
-; "Dumb" "AI", plays the "next" free spot, going left-to-right, top-to-bottom.
-; Put your own implementation here!
+(define (winner b)
+  (cond ((win-streak b "X") "X")
+        ((win-streak b "O") "O")
+        ((any-empty b) #f)
+        (else "D")))
 
+; takes a board `b`
+; returns all the possible free positions as a list of pairs
 (define (gen-positions b)
   (define (helper i j)
     (cond ((= i (length b)) '())
@@ -70,11 +44,8 @@
   (helper 0 0))
 
 
-;  (gen-positions '((#f "O" "X")
-;                   ("O" #f "X")
-;                   ("O" "X" #f)))
-
-
+; thakse a board `b` and a symbol `sym`
+; returns a list of all the possible ways the sym can be placed on the board once
 (define (gen-boards b sym)
     (foldr 
       (lambda (pair rec) 
@@ -82,16 +53,17 @@
       '() 
       (gen-positions b)))
 
-
-;  (gen-boards '((#f #f "X")
-;                ("O" #f "X")
-;                ("O" #f #f)) "O")
-
+; takes a `sym`
+; returns the opsing symbol of `sym`
 (define (oponent sym) 
   (cond 
     ((equal? sym "X") "O") 
     ((equal? sym "O") "X")))
 
+
+; takes a board and a "maximazing symbol" `max-sym`
+; returns a score* if the game is over or #f otherwise
+; * the score is 1 if `max-sym` has won, -1 if it has lost or 0 is its a draw
 (define (gen-score b max-sym) 
   (let ((win (winner b)))
     (cond ((equal? win max-sym) 1)
@@ -99,27 +71,52 @@
           ((equal? win "D") 0)
           (else #f))))
 
-; (print "-----------------")
-; (newline)
 
-;  (gen-score '((#f #f "X")
-;                ("O" #f "X")
-;                ("O" #f #f)) "X")
+; :P 
+(define (maximum-on f xs)
+  (cdr (foldr 
+         (lambda (x rec) 
+           (let 
+             ((val (f x))) 
+             (if (> val (car rec)) 
+                 (cons val x) 
+                 rec))) 
+         '(-inf.0 . ()) 
+         xs)))
 
+; a minimax implementation for a given position
+; takes a postion `pos` as a board, a "maximazing symbol" `max-sym` and a current symbol `curr-sym`
+; returns an estimated score of the given position, based on the maximazing player and the current player
 (define (minimax pos max-sym curr-sym)
   (if (not (equal? (gen-score pos max-sym) #f))
            (gen-score pos max-sym)
            (if (equal? max-sym curr-sym)
-               (foldl 
-                 (lambda (x acc) (max acc (minimax x max-sym (oponent max-sym)))) 
-                 -100 
-                 (gen-boards pos curr-sym))
-               (foldl 
-                 (lambda (x acc) (min acc (minimax x max-sym max-sym))) 
-                 100 
-                 (gen-boards pos curr-sym))
+               ; max
+               (maximum-on 
+                 id 
+                 (map 
+                   (lambda (b) (minimax b max-sym (oponent curr-sym))) 
+                   (gen-boards pos curr-sym)))
+               ; min
+               (maximum-on 
+                 (lambda (x) (- 0 x)) 
+                 (map 
+                   (lambda (b) (minimax b max-sym (oponent curr-sym))) 
+                   (gen-boards pos curr-sym)))
+; a different way of doing the same thing just with foldl instead of maximum-on
+;               ; max
+;               (foldl 
+;                 (lambda (x acc) (max acc (minimax x max-sym (oponent max-sym)))) 
+;                 -100 
+;                 (gen-boards pos curr-sym))
+;               ; min
+;               (foldl 
+;                 (lambda (x acc) (min acc (minimax x max-sym max-sym))) 
+;                 100 
+;                 (gen-boards pos curr-sym))
                )))
   
+; minimax with alpha beta prunning
 (define (minimax-fast pos alpha beta max-sym curr-sym)
   (define (helper poss ex-eval alpha beta is-max)
     (cond ((null? poss) ex-eval)
@@ -138,56 +135,38 @@
                     is-max)
                   ))))
   (if (not (equal? (gen-score pos max-sym) #f))
-           (gen-score pos max-sym)
-           (if (equal? max-sym curr-sym)
-               (helper (gen-boards pos curr-sym) -100 alpha beta #t)
-               (helper (gen-boards pos curr-sym) 100 alpha beta #f)
-               )))
-
-; (minimax-fast '((#f #f #f)
-;                 (#f #f #f)
-;                 (#f #f #f)) -100 100 "X" "X")
+    (gen-score pos max-sym)
+    (if (equal? max-sym curr-sym)
+      (helper (gen-boards pos curr-sym) -inf.0 alpha beta #t)
+      (helper (gen-boards pos curr-sym) +inf.0 alpha beta #f)
+    )))
 
 
+; generator of a list of position-score pairs
+; takes a board `b` and a current symbol `cur-sym`
+; return a list of pars, each of which has a position as their first 
+; element and a score, based on that position, as the second element
 (define (gen-pos-score b curr-sym)
   (map 
     (lambda (pair) 
          (cons
            pair
            (minimax-fast 
-             (place 
-               b 
-               (car pair) 
-               (cdr pair) 
-               curr-sym) 
-             -100
-             100
+             (place b (car pair) (cdr pair) curr-sym) 
+             -inf.0
+             +inf.0
              curr-sym 
              (oponent curr-sym)))) 
     (gen-positions b)))
 
-; (gen-pos-score '(("X" #f #f)
-;                  (#f #f #f)
-;                  (#f #f "O")) "X")
 
 (define (play b curr-sym)
-  (car (foldr 
-    (lambda (x rec) (if (>= (cdr rec) (cdr x)) rec x))
-    '((-1 . -1) . -100) 
-    (gen-pos-score b curr-sym))))
+  (car (maximum-on cdr (gen-pos-score b curr-sym))))
 
-;  (play'(("X" "X" #f)
-;                   (#f #f #f)
-;                   (#f #f "O")) "X")
-
-;  (play! '((#f #f #f)
-;             (#f #f #f)
-;             (#f #f #f)) "X")
-
-; (define (play curr-board curr-sign)
-;   (define (helper i j)
-;     (cond ((> i 2) #f)
-;           ((> j 2) (helper (+ i 1) 0))
-;           ((not (list-ref (list-ref curr-board i) j)) (cons i j))
-;           (else (helper i (+ j 1)))))
-;   (helper 0 0))
+; old way; without maximum-on; predi da pogledna hinta :D
+;(define (play b curr-sym)
+;  (car (foldr 
+;    (lambda (x rec) (if (>= (cdr rec) (cdr x)) rec x))
+;    '((-1 . -1) . -100) 
+;    (gen-pos-score b curr-sym))))
+;
