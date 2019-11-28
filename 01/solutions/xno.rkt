@@ -9,29 +9,30 @@
 (define (id x) x)
 
 ; takes a symbol `sym`
-; returns a function whuch checks if all the symbols in a list are equal to `sym`
+; returns a function which checks if all the symbols in a list are equal to `sym`
 (define (all-sym sym) (lambda (xs) (all? (lambda (x) (equal? x sym)) xs)))
 
 ; takes a board `b` and a symbol `sym`
 ; checks if there is a winning streak of the given symbol somewhere in the board
 (define (win-streak b sym)
-  (if (any? id (append 
-               (map (all-sym sym) (rows b)) 
-               (map (all-sym sym) (cols b)) 
-               (map (all-sym sym) (diags b))))
-  #t
-  #f))
+  (define (or* a b) (or a b))
+  (foldr or* #f (append 
+                  (map (all-sym sym) (rows b)) 
+                  (map (all-sym sym) (cols b)) 
+                  (map (all-sym sym) (diags b)))))
 
 ; takes a board `b`
 ; checks if there are any empty spots on the board
 (define (any-empty b)
   (any? id (map (lambda (xs) (any? (lambda (x) (equal? x #f)) xs)) b)))
 
+
 (define (winner b)
   (cond ((win-streak b "X") "X")
         ((win-streak b "O") "O")
         ((any-empty b) #f)
         (else "D")))
+
 
 ; takes a board `b`
 ; returns all the possible free positions as a list of pairs
@@ -44,18 +45,17 @@
   (helper 0 0))
 
 
-; thakse a board `b` and a symbol `sym`
+; takes a board `b` and a symbol `sym`
 ; returns a list of all the possible ways the sym can be placed on the board once
 (define (gen-boards b sym)
-    (foldr 
-      (lambda (pair rec) 
-        (cons (place b (car pair) (cdr pair) sym) rec)) 
-      '() 
+    (map 
+      (lambda (pair) (place b (car pair) (cdr pair) sym))
       (gen-positions b)))
 
+
 ; takes a `sym`
-; returns the opsing symbol of `sym`
-(define (oponent sym) 
+; returns the opposing symbol of `sym`
+(define (opponent sym) 
   (cond 
     ((equal? sym "X") "O") 
     ((equal? sym "O") "X")))
@@ -67,7 +67,7 @@
 (define (gen-score b max-sym) 
   (let ((win (winner b)))
     (cond ((equal? win max-sym) 1)
-          ((equal? win (oponent max-sym)) -1)
+          ((equal? win (opponent max-sym)) -1)
           ((equal? win "D") 0)
           (else #f))))
 
@@ -84,56 +84,37 @@
          '(-inf.0 . ()) 
          xs)))
 
+
 ; a minimax implementation for a given position
 ; takes a postion `pos` as a board, a "maximazing symbol" `max-sym` and a current symbol `curr-sym`
 ; returns an estimated score of the given position, based on the maximazing player and the current player
 (define (minimax pos max-sym curr-sym)
   (if (not (equal? (gen-score pos max-sym) #f))
-           (gen-score pos max-sym)
-           (if (equal? max-sym curr-sym)
-               ; max
-               (maximum-on 
-                 id 
-                 (map 
-                   (lambda (b) (minimax b max-sym (oponent curr-sym))) 
-                   (gen-boards pos curr-sym)))
-               ; min
-               (maximum-on 
-                 (lambda (x) (- 0 x)) 
-                 (map 
-                   (lambda (b) (minimax b max-sym (oponent curr-sym))) 
-                   (gen-boards pos curr-sym)))
-; a different way of doing the same thing just with foldl instead of maximum-on
-;               ; max
-;               (foldl 
-;                 (lambda (x acc) (max acc (minimax x max-sym (oponent max-sym)))) 
-;                 -100 
-;                 (gen-boards pos curr-sym))
-;               ; min
-;               (foldl 
-;                 (lambda (x acc) (min acc (minimax x max-sym max-sym))) 
-;                 100 
-;                 (gen-boards pos curr-sym))
-               )))
+    (gen-score pos max-sym)
+    (maximum-on 
+      (lambda (x) (if (equal? max-sym curr-sym) x (- 0 x))) 
+      (map 
+        (lambda (b) (minimax b max-sym (opponent curr-sym))) 
+        (gen-boards pos curr-sym)))))
   
+
 ; minimax with alpha beta prunning
 (define (minimax-fast pos alpha beta max-sym curr-sym)
   (define (helper poss ex-eval alpha beta is-max)
-    (cond ((null? poss) ex-eval)
-          ((<= beta alpha) ex-eval)
-          (else (let ((evalu (minimax-fast 
+    (if (or (null? poss) (<= beta alpha))
+          ex-eval
+          (let ((evalu (minimax-fast 
                                (car poss) 
                                alpha 
                                beta 
                                max-sym 
-                               (oponent curr-sym))))
+                               (opponent curr-sym))))
                   (helper 
                     (cdr poss) 
                     (if is-max (max ex-eval evalu) (min ex-eval evalu))
                     (if is-max (max alpha evalu) alpha) 
                     (if is-max beta (min beta evalu))
-                    is-max)
-                  ))))
+                    is-max))))
   (if (not (equal? (gen-score pos max-sym) #f))
     (gen-score pos max-sym)
     (if (equal? max-sym curr-sym)
@@ -144,7 +125,7 @@
 
 ; generator of a list of position-score pairs
 ; takes a board `b` and a current symbol `cur-sym`
-; return a list of pars, each of which has a position as their first 
+; returns a list of pairs, each of which has a position as their first 
 ; element and a score, based on that position, as the second element
 (define (gen-pos-score b curr-sym)
   (map 
@@ -156,7 +137,7 @@
              -inf.0
              +inf.0
              curr-sym 
-             (oponent curr-sym)))) 
+             (opponent curr-sym)))) 
     (gen-positions b)))
 
 
