@@ -10,29 +10,61 @@ module Stuff
   ) where
 
 group :: Eq a => [a] -> [[a]]
-group = undefined
+group = groupOn id
+--group [] = []
+--group [x] = [[x]]
+--group [x,y] = if x == y then [[x,y]] else [[x],[y]]
+--group (x:y:xs) = if x /= y then
+--                  [x]:group (y:xs)
+--                 else
+--                  case group xs of
+--                    []        -> [[x,y]]
+--                    ([]:_)    -> undefined 
+--                    (z:zs):ts -> if y == z then
+--                                  (x:y:z:zs):ts
+--                                 else
+--                                  [x,y]:(z:zs):ts
+                     
 
 -- Not mandatory, delete if you don't want this.
 insertBy :: (a -> a -> Ordering) -> a -> [a] -> [a]
-insertBy = undefined
+insertBy _ x [] = [x]
+insertBy f x (y:ys) = case f x y of
+                        GT  -> y : insertBy f x ys
+                        _   -> x : y : ys
 
 sortBy :: (a -> a -> Ordering) -> [a] -> [a]
-sortBy = undefined
+sortBy _ [] = []
+sortBy f (x:xs) = insertBy f x $ sortBy f xs 
 
 groupBy :: (a -> a -> Bool) -> [a] -> [[a]]
-groupBy = undefined
+groupBy _ [] = []
+groupBy _ [x] = [[x]]
+groupBy f [x,y] = if f x y then [[x,y]] else [[x],[y]]
+groupBy f (x:y:xs) = if f x y then
+                      case groupBy f xs of
+                        []     -> [[x,y]]
+                        ([]:_) -> undefined 
+                        zs:ts  -> if f y (head zs) then
+                                   (x:y:zs):ts
+                                  else
+                                   [x,y]:zs:ts
+                     else
+                      [x]:groupBy f (y:xs)
 
 on :: (b -> b -> c) -> (a -> b) -> a -> a -> c
-on = undefined
+on f g x y = f (g x) (g y)  
 
 (&&&) :: (a -> b) -> (a -> c) -> a -> (b, c)
-(&&&) = undefined
+(&&&) f g x = (f x, g x) 
 
 sortOn :: Ord b => (a -> b) -> [a] -> [a]
-sortOn = undefined
+sortOn f = sortBy (compare `on` f) 
 
 groupOn :: Eq b => (a -> b) -> [a] -> [[a]]
-groupOn = undefined
+groupOn f = groupBy ((==) `on` f)  
 
 classifyOn :: Ord b => (a -> b) -> [a] -> [[a]]
-classifyOn = undefined
+classifyOn f = (groupOn f) . (sortOn f)
+
+  
