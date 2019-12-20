@@ -59,10 +59,10 @@ on f g x y = f (g x) (g y)
 (&&&) f g x = (f x, g x) 
 
 sortOn :: Ord b => (a -> b) -> [a] -> [a]
-sortOn f = sortBy (compare `on` f) 
+sortOn f = map fst . sortBy (compare `on` snd) . map (\x -> (x, f x))
 
 groupOn :: Eq b => (a -> b) -> [a] -> [[a]]
-groupOn f = groupBy ((==) `on` f)  
+groupOn f = map (map fst) . groupBy ((==) `on` snd) . map (\x -> (x, f x))
 
 classifyOn :: Ord b => (a -> b) -> [a] -> [[a]]
 classifyOn f = groupOn f . sortOn f
