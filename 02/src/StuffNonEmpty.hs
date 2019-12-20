@@ -22,10 +22,6 @@ mapNonEmpty f (x:|xs) = f x :| map f xs
 groupByNonEmpty :: (a -> a -> Bool) -> [a] -> [NonEmpty a]
 groupByNonEmpty _ [] = []
 groupByNonEmpty _ [x] = [x:|[]]
-groupByNonEmpty f [x,y] = if f x y then 
-                            [x :| [y]] 
-                          else 
-                            [x :| [], y :| []]
 groupByNonEmpty f (x:y:xs) = 
   if f x y then
     case groupByNonEmpty f xs of
