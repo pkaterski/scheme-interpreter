@@ -30,7 +30,15 @@ groupByNonEmpty f (x:xs) =
                          (x:|[]):(y:|ys):zs
 
 groupOnNonEmpty :: Eq b => (a -> b) -> [a] -> [NonEmpty a]
-groupOnNonEmpty f = groupByNonEmpty ((==) `on` f) 
+groupOnNonEmpty f = map (mapNonEmpty fst) 
+                  . groupByNonEmpty ((==) `on` snd) 
+                  . map (id &&& f)
 
 classifyOnNonEmpty :: Ord b => (a -> b) -> [a] -> [NonEmpty a]
-classifyOnNonEmpty f = groupOnNonEmpty f . sortOn f 
+classifyOnNonEmpty f = 
+               map (mapNonEmpty fst) 
+             . groupByNonEmpty ((==) `on` snd) 
+             . sortBy (compare `on` snd) 
+             . map (id &&& f) 
+
+
