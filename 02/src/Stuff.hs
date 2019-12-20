@@ -65,6 +65,6 @@ groupOn :: Eq b => (a -> b) -> [a] -> [[a]]
 groupOn f = groupBy ((==) `on` f)  
 
 classifyOn :: Ord b => (a -> b) -> [a] -> [[a]]
-classifyOn f = (groupOn f) . (sortOn f)
+classifyOn f = groupOn f . sortOn f
 
   

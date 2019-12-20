@@ -41,4 +41,4 @@ groupOnNonEmpty :: Eq b => (a -> b) -> [a] -> [NonEmpty a]
 groupOnNonEmpty f = groupByNonEmpty ((==) `on` f) 
 
 classifyOnNonEmpty :: Ord b => (a -> b) -> [a] -> [NonEmpty a]
-classifyOnNonEmpty f = (groupOnNonEmpty f) . (sortOn f) 
+classifyOnNonEmpty f = groupOnNonEmpty f . sortOn f 
