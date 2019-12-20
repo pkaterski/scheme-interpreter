@@ -12,18 +12,14 @@ module Stuff
 group :: Eq a => [a] -> [[a]]
 group = groupOn id
 --group [] = []
---group [x] = [[x]]
---group (x:y:xs) =
---  if x /= y then
---    [x]:group (y:xs)
---  else
+--group (x:xs) =
 --    case group xs of
---       []        -> [[x,y]]
+--       []        -> [[x]]
 --       ([]:_)    -> undefined 
---       (z:zs):ts -> if y == z then
---                       (x:y:z:zs):ts
+--       (y:ys):zs -> if x == y then
+--                       (x:y:ys):zs
 --                    else
---                       [x,y]:(z:zs):ts
+--                      [x]:(y:ys):zs
                      
 
 -- Not mandatory, delete if you don't want this.
@@ -38,18 +34,14 @@ sortBy f = foldr (insertBy f) []
 
 groupBy :: (a -> a -> Bool) -> [a] -> [[a]]
 groupBy _ [] = []
-groupBy _ [x] = [[x]]
-groupBy eq (x:y:xs) = 
-  if eq x y then
+groupBy eq (x:xs) = 
     case groupBy eq xs of
-      []         -> [[x,y]]
+      []         -> [[x]]
       ([]:_)     -> undefined 
-      (z:zs):ts  -> if eq y z then
-                 (x:y:z:zs):ts
-                else
-                 [x,y]:(z:zs):ts
-  else
-    [x]:groupBy eq (y:xs)
+      (y:ys):zs  -> if eq x y then
+                       (x:y:ys):zs
+                    else
+                       [x]:(y:ys):zs
 
 on :: (b -> b -> c) -> (a -> b) -> a -> a -> c
 on f g x y = f (g x) (g y)  

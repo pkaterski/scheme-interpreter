@@ -21,17 +21,13 @@ mapNonEmpty f (x:|xs) = f x :| map f xs
 
 groupByNonEmpty :: (a -> a -> Bool) -> [a] -> [NonEmpty a]
 groupByNonEmpty _ [] = []
-groupByNonEmpty _ [x] = [x:|[]]
-groupByNonEmpty f (x:y:xs) = 
-  if f x y then
+groupByNonEmpty f (x:xs) = 
     case groupByNonEmpty f xs of
-       []          -> [x :| [y]] 
-       (z:|zs):ts  -> if f y z then
-                         (x:|(y:z:zs)):ts
+       []          -> [x :| []] 
+       (y:|ys):zs  -> if f x y then
+                         (x:|(y:ys)):zs
                       else
-                         (x:|[y]):(z:|zs):ts
-  else
-    (x:|[]):groupByNonEmpty f (y:xs)
+                         (x:|[]):(y:|ys):zs
 
 groupOnNonEmpty :: Eq b => (a -> b) -> [a] -> [NonEmpty a]
 groupOnNonEmpty f = groupByNonEmpty ((==) `on` f) 
