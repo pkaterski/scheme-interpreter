@@ -39,10 +39,8 @@ data BotTop a = Bot | Val a | Top
 between :: Ord a => BotTop a -> BotTop a -> Tree a -> Bool
 between low up Empty = low <= up 
 between low up (Node x l r) = 
-     Val x > low 
-  && Val x <= up 
-  && between low (Val x) l 
-  && between (Val x) up r
+     between low (Val x) l 
+  && between (Val x)  up r
 
 findBST :: Ord a => a -> Tree a -> Bool
 findBST _ Empty = False
