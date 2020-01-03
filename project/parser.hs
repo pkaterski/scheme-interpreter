@@ -2,7 +2,6 @@ import Control.Applicative
 import Data.Char
 
 -- ideas: else == #t as a keyword and synonym
--- TODO add lambda
 -- TODO maybe add separate types for complex ones
 data SchemeValue
   = SchemeBool Bool
@@ -15,6 +14,7 @@ data SchemeValue
   | SchemeIf (SchemeValue,SchemeValue,SchemeValue)
   | SchemeCond ([(SchemeValue,SchemeValue)])
   | SchemeDefinition (String,[String],SchemeValue)
+  | SchemeLambda ([String], SchemeValue)
   | SchemeFunctionCall (String, [SchemeValue])
   deriving (Eq, Show)
 
@@ -48,19 +48,16 @@ charP c = Parser $ \inp -> case inp of
 stringP :: String -> Parser String
 stringP = sequenceA . map charP 
 
--- TODO: a better way: (trueP <|> falseP)...
 boolP :: Parser SchemeValue
-boolP = fmap (\b -> SchemeBool $ case b of
-  "#t" -> True
-  "#f" -> False
-  _    -> undefined) -- this should never happen :)
-  $ (stringP "#t" <|> stringP "#f") 
+boolP = trueP <|> falseP
+  where
+    trueP = SchemeBool <$> const True <$> stringP "#t"
+    falseP = SchemeBool <$> const False <$> stringP "#f"
 
 
 spanP :: (Char -> Bool) -> Parser String
 spanP p = notNull (Parser $ \inp -> Just $ span p inp)
 
--- TODO remvoe unsuded notNull in safe one
 spanUnsafeP :: (Char -> Bool) -> Parser String
 spanUnsafeP p = Parser $ \inp -> Just $ span p inp
 
@@ -73,12 +70,12 @@ notNull (Parser p) = Parser $ \inp -> do
 
 -- this could be refactored.. to Parser Integer and simplified below
 digitsP :: Parser String
-digitsP = notNull $ spanP isDigit 
+digitsP = spanP isDigit 
 
 integerP :: Parser SchemeValue 
 integerP = 
   f 
-  <$> notNull (((:) <$> charP '-' <*> digitsP) 
+  <$> (((:) <$> charP '-' <*> digitsP) 
   <|> digitsP)
   where f ds = SchemeInteger $ read ds
 
@@ -115,7 +112,7 @@ ifP =
   unbracket ((,,) <$> (isWord "if" *> schemeP) <*> schemeP <*> schemeP)
 
 forbidden :: [String]
-forbidden = ["if", "cond", "define"]
+forbidden = ["if", "cond", "define", "lambda"]
 
 notKeyword :: String -> Bool
 notKeyword x = not $ x `elem` forbidden 
@@ -123,11 +120,16 @@ notKeyword x = not $ x `elem` forbidden
 -- TODO add support for letters followed by numbers
 synonymP :: Parser SchemeValue
 synonymP = Parser $ \inp -> do
-  (s,inp') <- runParser (notNull $ spanP isLetter) inp
+  (s,inp') <- runParser valP inp
   if notKeyword s then
     return (SchemeSynonym s,inp')
   else
     Nothing
+  where
+    valP = 
+          (++) 
+      <$> spanP isLetter 
+      <*> spanUnsafeP (liftA2 (||) isLetter isDigit)
 
 condP :: Parser SchemeValue
 condP = fmap SchemeCond 
@@ -163,6 +165,18 @@ defP = fmap SchemeDefinition
     syn = ws *> spanP isLetter <* ws
     body = schemeP
 
+
+lambdaP :: Parser SchemeValue
+lambdaP = fmap SchemeLambda
+   $ unbracket (isWord "lambda" *> 
+                  ((,) <$> head <*> body))
+  where 
+    head =  fmap (:[]) syn 
+        <|> unbracket (many syn) 
+    syn = ws *> spanP isLetter <* ws
+    body = schemeP
+
+
 funCallP :: Parser SchemeValue
 funCallP = fmap SchemeFunctionCall 
          $ unbracket ((,) <$> fun <*> (many schemeP))
@@ -184,6 +198,7 @@ schemeP = ws *> (
   <|> listP 
   <|> ifP 
   <|> defP 
+  <|> lambdaP 
   <|> funCallP 
   ) <* ws 
 
