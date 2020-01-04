@@ -1,3 +1,5 @@
+{-# LANGUAGE TupleSections #-}
+
 import Control.Applicative
 import Data.Char
 
@@ -40,76 +42,81 @@ instance Alternative Parser where
       Nothing -> p2 inp
       out     -> out 
 
-charP :: Char -> Parser Char
-charP c = Parser $ \inp -> case inp of
-  (x:xs) | x == c -> Just (x, xs)
-  _               -> Nothing 
+instance Monad Parser where
+  Parser px >>= f = Parser $ \inp -> do
+    (x, inp') <- px inp
+    runParser (f x) inp' 
+    
+
+charP :: (Char -> Bool) -> Parser Char
+charP p = Parser $ \inp -> case inp of
+  (x:xs) | p x -> Just (x, xs)
+  _            -> Nothing 
   
 stringP :: String -> Parser String
-stringP = sequenceA . map charP 
+stringP = traverse (\x -> charP (==x)) 
 
 boolP :: Parser SchemeValue
 boolP = trueP <|> falseP
   where
-    trueP = SchemeBool <$> const True <$> stringP "#t"
-    falseP = SchemeBool <$> const False <$> stringP "#f"
+    trueP  = SchemeBool True <$ stringP "#t"
+    falseP = SchemeBool False <$ stringP "#f"
 
-
-spanP :: (Char -> Bool) -> Parser String
-spanP p = notNull (Parser $ \inp -> Just $ span p inp)
-
-spanUnsafeP :: (Char -> Bool) -> Parser String
-spanUnsafeP p = Parser $ \inp -> Just $ span p inp
-
-notNull :: Parser [a] -> Parser [a]
-notNull (Parser p) = Parser $ \inp -> do
-  (xs, inp') <- p inp
-  if null xs then
-    Nothing
-  else return (xs, inp') 
 
 -- this could be refactored.. to Parser Integer and simplified below
 digitsP :: Parser String
-digitsP = spanP isDigit 
+digitsP = some $ charP isDigit 
+
+negDigitsP :: Parser String
+negDigitsP = do
+  s  <- charP (=='-')
+  ds <- digitsP
+  return (s:ds) 
 
 integerP :: Parser SchemeValue 
-integerP = 
-  f 
-  <$> (((:) <$> charP '-' <*> digitsP) 
-  <|> digitsP)
-  where f ds = SchemeInteger $ read ds
+integerP = do
+  ds <- negDigitsP <|> digitsP
+  return (SchemeInteger $ read ds) 
 
--- this is utter boza
+
 doubleP :: Parser SchemeValue
-doubleP 
-   =  fmap (\x -> SchemeDouble $ read x) 
-   $  comb 
-  <$> (((:) <$> charP '-' <*> digitsP) <|> digitsP) 
-  <*> charP '.' 
-  <*> digitsP 
-    where comb xs x ys = xs++x:ys
+doubleP = do
+  n <- negDigitsP <|> digitsP
+  _ <- charP (=='.')
+  m <- digitsP 
+  return $ SchemeDouble (read $ n++'.':m)
 
 
 -- no escape support
 schemeStringP :: Parser SchemeValue
-schemeStringP = fmap SchemeString $ charP '"' *> 
-                  spanUnsafeP (/='"') 
-                <* charP '"'
-    
+schemeStringP = do
+  charP (=='"')
+  x <- many $ charP (/='"')
+  charP (=='"')
+  return $ SchemeString x 
 
 ws :: Parser String 
-ws = spanUnsafeP isSpace 
+ws = many $ charP isSpace 
 
 unbracket :: Parser a -> Parser a
-unbracket p = ws *> charP '(' *> ws *> p <* ws <* charP ')' <* ws
+unbracket p = do
+  ws *> charP (=='(') *> ws
+  x <- p
+  ws *> charP (==')') *> ws
+  return x
 
 isWord :: String -> Parser String
 isWord s = ws *> stringP s 
 
 ifP :: Parser SchemeValue
-ifP = 
-  fmap SchemeIf $
-  unbracket ((,,) <$> (isWord "if" *> schemeP) <*> schemeP <*> schemeP)
+ifP = do
+  (cond, t, f) <- unbracket $ do
+                    isWord "if"
+                    v1 <- schemeP
+                    v2 <- schemeP
+                    v3 <- schemeP
+                    return (v1,v2,v3)
+  return $ SchemeIf (cond, t, f)
 
 forbidden :: [String]
 forbidden = ["if", "cond", "define", "lambda"]
@@ -117,53 +124,56 @@ forbidden = ["if", "cond", "define", "lambda"]
 notKeyword :: String -> Bool
 notKeyword x = not $ x `elem` forbidden 
 
--- TODO add support for letters followed by numbers
 synonymP :: Parser SchemeValue
-synonymP = Parser $ \inp -> do
-  (s,inp') <- runParser valP inp
-  if notKeyword s then
-    return (SchemeSynonym s,inp')
-  else
-    Nothing
-  where
-    valP = 
-          (++) 
-      <$> spanP isLetter 
-      <*> spanUnsafeP (liftA2 (||) isLetter isDigit)
+synonymP = do
+  xs <- some $ charP isLetter
+  ys <- many $ charP (liftA2 (||) isLetter isDigit)
+  let s = (xs++ys) in
+    if notKeyword s 
+    then return $ SchemeSynonym s 
+    else empty 
 
 condP :: Parser SchemeValue
-condP = fmap SchemeCond 
-  $ unbracket 
-  (isWord "cond" *> some (unbracket ((,) <$> schemeP <*> schemeP)))
+condP = unbracket $ do
+          isWord "cond"
+          vs <- some pair
+          return $ SchemeCond vs
+  where pair = unbracket $ do
+          v1 <- schemeP
+          v2 <- schemeP
+          return (v1,v2)
 
--- is it needed??
--- if so also: TODO support for numbers after letters 
+-- is this usefull. scheme supports it but idk 
 symbolP :: Parser SchemeValue
-symbolP = fmap SchemeSynonym $ spanP isLetter
+symbolP = do 
+  xs <- some $ charP isLetter
+  ys <- many $ charP (liftA2 (||) isLetter isDigit)
+  return $ SchemeSymbol (xs++ys) 
 
 listP :: Parser SchemeValue
-listP = fmap SchemeList 
-  $  charP '\'' 
-  *> unbracket (many vals)
-    where purevals = 
-                 boolP 
-             <|> integerP 
-             <|> doubleP 
-             <|> synonymP -- is this going to break something ??
-             <|> fmap SchemeList (unbracket $ many vals) --lists inside lists
-          vals = ws *> purevals <* ws
+listP = do
+    charP (=='\'')
+    vs <- unbracket $ many vals 
+    return $ SchemeList vs
+  where purevals = 
+               boolP 
+           <|> integerP 
+           <|> doubleP 
+           <|> symbolP 
+           <|> fmap SchemeList (unbracket $ many vals) 
+        vals = ws *> purevals <* ws
 
--- unbeleavable boza
+-- TODO do notation below maybe?
 defP :: Parser SchemeValue
-defP = fmap SchemeDefinition
-   $ unbracket (isWord "define" *> 
-                  (comb <$> head <*> body))
+defP = SchemeDefinition
+    <$> unbracket 
+        (isWord "define" *> (comb <$> head <*> body))
   where 
     comb (x,ys) zs = (x,ys,zs)
-    head =  (fmap (\x -> (x,[])) syn) 
+    head =  (,[]) <$> syn 
         <|> unbracket ((,) <$> syn <*> (many syn)) 
-    syn = ws *> spanP isLetter <* ws
-    body = schemeP
+    syn = ws *> (some $ charP isLetter) <* ws
+    body = schemeP <|> unbracket schemeP
 
 
 lambdaP :: Parser SchemeValue
@@ -171,10 +181,10 @@ lambdaP = fmap SchemeLambda
    $ unbracket (isWord "lambda" *> 
                   ((,) <$> head <*> body))
   where 
-    head =  fmap (:[]) syn 
+    head = (:[]) <$> syn 
         <|> unbracket (many syn) 
-    syn = ws *> spanP isLetter <* ws
-    body = schemeP
+    syn = ws *> (some $ charP isLetter) <* ws
+    body = schemeP <|> unbracket schemeP
 
 
 funCallP :: Parser SchemeValue
@@ -182,10 +192,11 @@ funCallP = fmap SchemeFunctionCall
          $ unbracket ((,) <$> fun <*> (many schemeP))
   where 
     fun = Parser $ \inp -> do
-      (ws, inp') <- runParser (ws *> spanP (/=' ') <* ws) inp
-      if notKeyword ws then
-        return (ws, inp')
+      (ws, inp') <- runParser nonSpaceP inp
+      if notKeyword ws
+      then return (ws, inp')
       else Nothing
+    nonSpaceP = ws *> (some $ charP (/=' ')) <* ws
 
 schemeP ::Parser SchemeValue
 schemeP = ws *> (
