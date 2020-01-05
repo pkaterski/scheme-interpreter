@@ -1,4 +1,5 @@
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE BlockArguments #-}
 
 import Control.Applicative
 import Data.Char
@@ -24,32 +25,32 @@ data SchemeValue
 newtype Parser a = Parser {runParser :: String -> Maybe (a,String)}
 
 instance Functor Parser where
-  fmap f (Parser p) = Parser $ \inp -> do
+  fmap f (Parser p) = Parser \inp -> do
     (x, inp') <- p inp
     return (f x, inp') 
 
 instance Applicative Parser where
-  pure x = Parser $ \inp -> Just (x, inp) 
-  Parser f <*> Parser p = Parser $ \inp -> do
-    (f, inp') <- f inp 
-    (x, inp'')  <- p inp'
+  pure x = Parser \inp -> Just (x, inp) 
+  Parser f <*> Parser p = Parser \inp -> do
+    (f, inp')  <- f inp 
+    (x, inp'') <- p inp'
     return (f x, inp'') 
 
 instance Alternative Parser where
-  empty = Parser $ \_ -> Nothing 
-  Parser p1 <|> Parser p2 = Parser $ \inp ->
+  empty = Parser \_ -> Nothing 
+  Parser p1 <|> Parser p2 = Parser \inp ->
     case p1 inp of
       Nothing -> p2 inp
       out     -> out 
 
 instance Monad Parser where
-  Parser px >>= f = Parser $ \inp -> do
+  Parser px >>= f = Parser \inp -> do
     (x, inp') <- px inp
     runParser (f x) inp' 
     
 
 charP :: (Char -> Bool) -> Parser Char
-charP p = Parser $ \inp -> case inp of
+charP p = Parser \inp -> case inp of
   (x:xs) | p x -> Just (x, xs)
   _            -> Nothing 
   
@@ -59,7 +60,7 @@ stringP = traverse (\x -> charP (==x))
 boolP :: Parser SchemeValue
 boolP = trueP <|> falseP
   where
-    trueP  = SchemeBool True <$ stringP "#t"
+    trueP  = SchemeBool True  <$ stringP "#t"
     falseP = SchemeBool False <$ stringP "#f"
 
 
@@ -110,13 +111,11 @@ isWord s = ws *> stringP s
 
 ifP :: Parser SchemeValue
 ifP = do
-  (cond, t, f) <- unbracket $ do
-                    isWord "if"
-                    v1 <- schemeP
-                    v2 <- schemeP
-                    v3 <- schemeP
-                    return (v1,v2,v3)
-  return $ SchemeIf (cond, t, f)
+  x <- unbracket $ (,,)
+    <$> (isWord "if" *> schemeP)
+    <*> schemeP
+    <*> schemeP
+  return $ SchemeIf x
 
 forbidden :: [String]
 forbidden = ["if", "cond", "define", "lambda"]
@@ -134,14 +133,14 @@ synonymP = do
     else empty 
 
 condP :: Parser SchemeValue
-condP = unbracket $ do
-          isWord "cond"
-          vs <- some pair
-          return $ SchemeCond vs
-  where pair = unbracket $ do
-          v1 <- schemeP
-          v2 <- schemeP
-          return (v1,v2)
+condP = unbracket do
+    isWord "cond"
+    vs <- some pair
+    return $ SchemeCond vs
+  where 
+    pair = unbracket $ (,)
+      <$> schemeP
+      <*> schemeP
 
 -- is this usefull. scheme supports it but idk 
 symbolP :: Parser SchemeValue
@@ -155,19 +154,20 @@ listP = do
     charP (=='\'')
     vs <- unbracket $ many vals 
     return $ SchemeList vs
-  where purevals = 
-               boolP 
-           <|> integerP 
-           <|> doubleP 
-           <|> symbolP 
-           <|> fmap SchemeList (unbracket $ many vals) 
-        vals = ws *> purevals <* ws
+  where 
+    purevals = 
+          boolP 
+      <|> integerP 
+      <|> doubleP 
+      <|> symbolP 
+      <|> fmap SchemeList (unbracket $ many vals) 
+    vals = ws *> purevals <* ws
 
 -- TODO do notation below maybe?
 defP :: Parser SchemeValue
 defP = SchemeDefinition
     <$> unbracket 
-        (isWord "define" *> (comb <$> head <*> body))
+        do isWord "define" *> (comb <$> head <*> body)
   where 
     comb (x,ys) zs = (x,ys,zs)
     head =  (,[]) <$> syn 
@@ -191,11 +191,11 @@ funCallP :: Parser SchemeValue
 funCallP = fmap SchemeFunctionCall 
          $ unbracket ((,) <$> fun <*> (many schemeP))
   where 
-    fun = Parser $ \inp -> do
-      (ws, inp') <- runParser nonSpaceP inp
+    fun = do
+      ws <- nonSpaceP
       if notKeyword ws
-      then return (ws, inp')
-      else Nothing
+      then return ws
+      else empty
     nonSpaceP = ws *> (some $ charP (/=' ')) <* ws
 
 schemeP ::Parser SchemeValue
