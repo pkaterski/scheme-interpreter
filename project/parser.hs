@@ -1,4 +1,5 @@
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE BlockArguments #-}
 
 import Control.Applicative
@@ -15,7 +16,7 @@ data SchemeValue
   | SchemeList [SchemeValue]
   | SchemeSynonym String -- any non-keyword
   | SchemeIf (SchemeValue,SchemeValue,SchemeValue)
-  | SchemeCond ([(SchemeValue,SchemeValue)])
+  | SchemeCond [(SchemeValue,SchemeValue)]
   | SchemeDefinition (String,[String],SchemeValue)
   | SchemeLambda ([String], SchemeValue)
   | SchemeFunctionCall (String, [SchemeValue])
@@ -37,7 +38,7 @@ instance Applicative Parser where
     return (f x, inp'') 
 
 instance Alternative Parser where
-  empty = Parser \_ -> Nothing 
+  empty = Parser $ const  Nothing 
   Parser p1 <|> Parser p2 = Parser \inp ->
     case p1 inp of
       Nothing -> p2 inp
@@ -50,7 +51,7 @@ instance Monad Parser where
     
 
 charP :: (Char -> Bool) -> Parser Char
-charP p = Parser \inp -> case inp of
+charP p = Parser \case
   (x:xs) | p x -> Just (x, xs)
   _            -> Nothing 
   
@@ -121,7 +122,7 @@ forbidden :: [String]
 forbidden = ["if", "cond", "define", "lambda"]
 
 notKeyword :: String -> Bool
-notKeyword x = not $ x `elem` forbidden 
+notKeyword x =  x `notElem` forbidden 
 
 synonymP :: Parser SchemeValue
 synonymP = do
@@ -171,32 +172,32 @@ defP = SchemeDefinition
   where 
     comb (x,ys) zs = (x,ys,zs)
     head =  (,[]) <$> syn 
-        <|> unbracket ((,) <$> syn <*> (many syn)) 
-    syn = ws *> (some $ charP isLetter) <* ws
+        <|> unbracket ((,) <$> syn <*> many syn) 
+    syn = ws *> some (charP isLetter) <* ws
     body = schemeP <|> unbracket schemeP
 
 
 lambdaP :: Parser SchemeValue
-lambdaP = fmap SchemeLambda
-   $ unbracket (isWord "lambda" *> 
-                  ((,) <$> head <*> body))
+lambdaP = SchemeLambda <$>
+   unbracket 
+    (isWord "lambda" *> ((,) <$> head <*> body))
   where 
     head = (:[]) <$> syn 
         <|> unbracket (many syn) 
-    syn = ws *> (some $ charP isLetter) <* ws
+    syn = ws *> some (charP isLetter) <* ws
     body = schemeP <|> unbracket schemeP
 
 
 funCallP :: Parser SchemeValue
-funCallP = fmap SchemeFunctionCall 
-         $ unbracket ((,) <$> fun <*> (many schemeP))
+funCallP = SchemeFunctionCall <$>
+         unbracket ((,) <$> fun <*> many schemeP)
   where 
     fun = do
       ws <- nonSpaceP
       if notKeyword ws
       then return ws
       else empty
-    nonSpaceP = ws *> (some $ charP (/=' ')) <* ws
+    nonSpaceP = ws *> some (charP (/=' ')) <* ws
 
 schemeP ::Parser SchemeValue
 schemeP = ws *> (
