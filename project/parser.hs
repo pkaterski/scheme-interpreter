@@ -100,8 +100,8 @@ schemeStringP = do
 ws :: Parser String 
 ws = many $ charP isSpace 
 
-unbracket :: Parser a -> Parser a
-unbracket p = do
+bracket :: Parser a -> Parser a
+bracket p = do
   ws *> charP (=='(') *> ws
   x <- p
   ws *> charP (==')') *> ws
@@ -112,8 +112,8 @@ isWord s = ws *> stringP s
 
 ifP :: Parser SchemeValue
 ifP = do
-  x <- unbracket $ (,,)
-    <$> (isWord "if" *> schemeP)
+  x <- bracket $ (,,)
+    <$> do isWord "if" *> schemeP
     <*> schemeP
     <*> schemeP
   return $ SchemeIf x
@@ -134,12 +134,12 @@ synonymP = do
     else empty 
 
 condP :: Parser SchemeValue
-condP = unbracket do
+condP = bracket do
     isWord "cond"
     vs <- some pair
     return $ SchemeCond vs
   where 
-    pair = unbracket $ (,)
+    pair = bracket $ (,)
       <$> schemeP
       <*> schemeP
 
@@ -147,13 +147,13 @@ condP = unbracket do
 symbolP :: Parser SchemeValue
 symbolP = do 
   xs <- some $ charP isLetter
-  ys <- many $ charP (liftA2 (||) isLetter isDigit)
+  ys <- many $ charP do liftA2 (||) isLetter isDigit
   return $ SchemeSymbol (xs++ys) 
 
 listP :: Parser SchemeValue
 listP = do
     charP (=='\'')
-    vs <- unbracket $ many vals 
+    vs <- bracket $ many vals 
     return $ SchemeList vs
   where 
     purevals = 
@@ -161,36 +161,36 @@ listP = do
       <|> integerP 
       <|> doubleP 
       <|> symbolP 
-      <|> fmap SchemeList (unbracket $ many vals) 
+      <|> fmap SchemeList do bracket $ many vals 
     vals = ws *> purevals <* ws
 
 -- TODO do notation below maybe?
 defP :: Parser SchemeValue
 defP = SchemeDefinition
-    <$> unbracket 
+    <$> bracket 
         do isWord "define" *> (comb <$> head <*> body)
   where 
     comb (x,ys) zs = (x,ys,zs)
     head =  (,[]) <$> syn 
-        <|> unbracket ((,) <$> syn <*> many syn) 
+        <|> bracket do (,) <$> syn <*> many syn 
     syn = ws *> some (charP isLetter) <* ws
-    body = schemeP <|> unbracket schemeP
+    body = schemeP <|> bracket schemeP
 
 
 lambdaP :: Parser SchemeValue
 lambdaP = SchemeLambda <$>
-   unbracket 
-    (isWord "lambda" *> ((,) <$> head <*> body))
+   bracket 
+    do isWord "lambda" *> ((,) <$> head <*> body)
   where 
     head = (:[]) <$> syn 
-        <|> unbracket (many syn) 
+        <|> bracket (many syn) 
     syn = ws *> some (charP isLetter) <* ws
-    body = schemeP <|> unbracket schemeP
+    body = schemeP <|> bracket schemeP
 
 
 funCallP :: Parser SchemeValue
 funCallP = SchemeFunctionCall <$>
-         unbracket ((,) <$> fun <*> many schemeP)
+         bracket do (,) <$> fun <*> many schemeP
   where 
     fun = do
       ws <- nonSpaceP
