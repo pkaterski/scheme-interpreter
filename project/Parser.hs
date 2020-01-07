@@ -2,7 +2,10 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE BlockArguments #-}
 
+module Parser where
+
 import Control.Applicative
+import Data.Foldable (asum)
 import Data.Char
 
 -- ideas: else == #t as a keyword and synonym
@@ -198,19 +201,19 @@ funCallP = SchemeFunctionCall <$>
     nonSpaceP = ws *> some (charP (/=' ')) <* ws
 
 schemeP ::Parser SchemeValue
-schemeP = ws *> (
-    boolP 
-  <|> doubleP 
-  <|> integerP
-  <|> schemeStringP
-  <|> synonymP
-  <|> condP 
-  <|> listP 
-  <|> ifP 
-  <|> defP 
-  <|> lambdaP 
-  <|> funCallP 
-  ) <* ws 
+schemeP = ws *> asum
+  [ boolP
+  , doubleP
+  , integerP
+  , schemeStringP
+  , synonymP
+  , condP
+  , listP
+  , ifP
+  , defP
+  , lambdaP
+  , funCallP
+  ] <* ws
 
 
 
