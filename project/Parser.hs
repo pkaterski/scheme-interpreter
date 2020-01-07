@@ -15,7 +15,7 @@ data SchemeValue
   | SchemeSymbol String -- for lists
   | SchemeList [SchemeValue]
   | SchemeSynonym String -- any non-keyword
-  | SchemeIf (SchemeValue,SchemeValue,SchemeValue)
+  | SchemeIf SchemeValue SchemeValue SchemeValue
   | SchemeCond [(SchemeValue,SchemeValue)]
   | SchemeDefinition (String,[String],SchemeValue)
   | SchemeLambda ([String], SchemeValue)
@@ -111,12 +111,10 @@ isWord :: String -> Parser String
 isWord s = ws *> stringP s 
 
 ifP :: Parser SchemeValue
-ifP = do
-  x <- bracket $ (,,)
-    <$> do isWord "if" *> schemeP
-    <*> schemeP
-    <*> schemeP
-  return $ SchemeIf x
+ifP = bracket $ SchemeIf
+  <$> do isWord "if" *> schemeP
+  <*> schemeP
+  <*> schemeP
 
 forbidden :: [String]
 forbidden = ["if", "cond", "define", "lambda"]
