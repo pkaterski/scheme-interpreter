@@ -20,7 +20,7 @@ data SchemeValue
   | SchemeSynonym String -- any non-keyword
   | SchemeIf SchemeValue SchemeValue SchemeValue
   | SchemeCond [(SchemeValue,SchemeValue)]
-  | SchemeDefinition (String,[String],SchemeValue)
+  | SchemeDefinition String [String] SchemeValue
   | SchemeLambda ([String], SchemeValue)
   | SchemeFunctionCall (String, [SchemeValue])
   deriving (Eq, Show)
@@ -125,14 +125,18 @@ forbidden = ["if", "cond", "define", "lambda"]
 notKeyword :: String -> Bool
 notKeyword x =  x `notElem` forbidden 
 
-synonymP :: Parser SchemeValue
+synonymP :: Parser String
 synonymP = do
-  xs <- some $ charP isLetter
-  ys <- many $ charP (liftA2 (||) isLetter isDigit)
-  let s = (xs++ys) in
-    if notKeyword s 
-    then return $ SchemeSynonym s 
-    else empty 
+  ws
+
+  x <- charP isLetter
+  ys <- many $ charP $ liftA2 (||) isLetter isDigit
+
+  ws
+  let s = x:ys in
+    if notKeyword s
+    then return s
+    else empty
 
 condP :: Parser SchemeValue
 condP = bracket do
@@ -167,15 +171,23 @@ listP = do
 
 -- TODO do notation below maybe?
 defP :: Parser SchemeValue
-defP = SchemeDefinition
-    <$> bracket 
-        do isWord "define" *> (comb <$> head <*> body)
-  where 
-    comb (x,ys) zs = (x,ys,zs)
-    head =  (,[]) <$> syn 
-        <|> bracket do (,) <$> syn <*> many syn 
-    syn = ws *> some (charP isLetter) <* ws
-    body = schemeP <|> bracket schemeP
+defP = bracket do
+  isWord "define"
+  ws
+  let idents = Right <$> bracket (some synonymP)
+      singleIdent = Left <$> synonymP
+
+  notBody <- singleIdent <|> idents
+  ws
+
+  body <- schemeP
+  ws
+
+  pure $ case notBody of
+    Left single -> SchemeDefinition single [] body
+
+    Right [] -> error "the impossible has happened"
+    Right (x:xs) -> SchemeDefinition x xs body
 
 
 lambdaP :: Parser SchemeValue
@@ -206,7 +218,7 @@ schemeP = ws *> asum
   , doubleP
   , integerP
   , schemeStringP
-  , synonymP
+  , SchemeSynonym <$> synonymP
   , condP
   , listP
   , ifP
