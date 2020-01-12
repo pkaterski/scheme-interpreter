@@ -31,35 +31,35 @@ newtype Parser a = Parser {runParser :: String -> Maybe (a,String)}
 instance Functor Parser where
   fmap f (Parser p) = Parser \inp -> do
     (x, inp') <- p inp
-    return (f x, inp') 
+    return (f x, inp')
 
 instance Applicative Parser where
-  pure x = Parser \inp -> Just (x, inp) 
+  pure x = Parser \inp -> Just (x, inp)
   Parser f <*> Parser p = Parser \inp -> do
-    (f, inp')  <- f inp 
+    (f, inp')  <- f inp
     (x, inp'') <- p inp'
-    return (f x, inp'') 
+    return (f x, inp'')
 
 instance Alternative Parser where
-  empty = Parser $ const  Nothing 
+  empty = Parser $ const  Nothing
   Parser p1 <|> Parser p2 = Parser \inp ->
     case p1 inp of
       Nothing -> p2 inp
-      out     -> out 
+      out     -> out
 
 instance Monad Parser where
   Parser px >>= f = Parser \inp -> do
     (x, inp') <- px inp
-    runParser (f x) inp' 
-    
+    runParser (f x) inp'
+
 
 charP :: (Char -> Bool) -> Parser Char
 charP p = Parser \case
   (x:xs) | p x -> Just (x, xs)
-  _            -> Nothing 
-  
+  _            -> Nothing
+
 stringP :: String -> Parser String
-stringP = traverse (\x -> charP (==x)) 
+stringP = traverse \x -> charP (==x)
 
 boolP :: Parser SchemeValue
 boolP = trueP <|> falseP
@@ -70,26 +70,26 @@ boolP = trueP <|> falseP
 
 -- this could be refactored.. to Parser Integer and simplified below
 digitsP :: Parser String
-digitsP = some $ charP isDigit 
+digitsP = some $ charP isDigit
 
 negDigitsP :: Parser String
 negDigitsP = do
   s  <- charP (=='-')
   ds <- digitsP
-  return (s:ds) 
+  return (s:ds)
 
-integerP :: Parser SchemeValue 
+integerP :: Parser SchemeValue
 integerP = do
   ds <- negDigitsP <|> digitsP
-  return (SchemeInteger $ read ds) 
+  return $ SchemeInteger $ read ds
 
 
 doubleP :: Parser SchemeValue
 doubleP = do
   n <- negDigitsP <|> digitsP
   _ <- charP (=='.')
-  m <- digitsP 
-  return $ SchemeDouble (read $ n++'.':m)
+  m <- digitsP
+  return $ SchemeDouble $ read $ n++'.':m
 
 
 -- no escape support
@@ -98,10 +98,10 @@ schemeStringP = do
   charP (=='"')
   x <- many $ charP (/='"')
   charP (=='"')
-  return $ SchemeString x 
+  return $ SchemeString x
 
-ws :: Parser String 
-ws = many $ charP isSpace 
+ws :: Parser String
+ws = many $ charP isSpace
 
 bracket :: Parser a -> Parser a
 bracket p = do
@@ -111,7 +111,7 @@ bracket p = do
   return x
 
 isWord :: String -> Parser String
-isWord s = ws *> stringP s 
+isWord s = ws *> stringP s
 
 ifP :: Parser SchemeValue
 ifP = bracket $ SchemeIf
@@ -123,7 +123,7 @@ forbidden :: [String]
 forbidden = ["if", "cond", "define", "lambda"]
 
 notKeyword :: String -> Bool
-notKeyword x =  x `notElem` forbidden 
+notKeyword x =  x `notElem` forbidden
 
 synonymP :: Parser String
 synonymP = do
@@ -143,30 +143,30 @@ condP = bracket do
     isWord "cond"
     vs <- some pair
     return $ SchemeCond vs
-  where 
+  where
     pair = bracket $ (,)
       <$> schemeP
       <*> schemeP
 
--- is this usefull. scheme supports it but idk 
+-- is this usefull. scheme supports it but idk
 symbolP :: Parser SchemeValue
-symbolP = do 
+symbolP = do
   xs <- some $ charP isLetter
-  ys <- many $ charP do liftA2 (||) isLetter isDigit
-  return $ SchemeSymbol (xs++ys) 
+  ys <- many $ charP $ liftA2 (||) isLetter isDigit
+  return $ SchemeSymbol (xs++ys)
 
 listP :: Parser SchemeValue
 listP = do
     charP (=='\'')
-    vs <- bracket $ many vals 
+    vs <- bracket $ many vals
     return $ SchemeList vs
-  where 
-    purevals = 
-          boolP 
-      <|> integerP 
-      <|> doubleP 
-      <|> symbolP 
-      <|> fmap SchemeList do bracket $ many vals 
+  where
+    purevals =
+          boolP
+      <|> integerP
+      <|> doubleP
+      <|> symbolP
+      <|> fmap SchemeList do bracket $ many vals
     vals = ws *> purevals <* ws
 
 -- TODO do notation below maybe?
@@ -192,11 +192,11 @@ defP = bracket do
 
 lambdaP :: Parser SchemeValue
 lambdaP = SchemeLambda <$>
-   bracket 
-    do isWord "lambda" *> ((,) <$> head <*> body)
-  where 
-    head = (:[]) <$> syn 
-        <|> bracket (many syn) 
+   bracket
+    do isWord "lambda" *> do (,) <$> head <*> body
+  where
+    head = (:[]) <$> syn
+        <|> bracket do many syn
     syn = ws *> some (charP isLetter) <* ws
     body = schemeP <|> bracket schemeP
 
@@ -204,7 +204,7 @@ lambdaP = SchemeLambda <$>
 funCallP :: Parser SchemeValue
 funCallP = SchemeFunctionCall <$>
          bracket do (,) <$> fun <*> many schemeP
-  where 
+  where
     fun = do
       ws <- nonSpaceP
       if notKeyword ws
