@@ -7,13 +7,14 @@ import Prelude hiding (reverse)
 
 import Data.Char (isSpace)
 import Data.Function (on)
+import Control.Applicative (liftA2)
 
 newtype Pointwise a b = Pointwise {getPointwise :: (a, b)}
   deriving (Show, Eq)
 
 instance (Ord a, Ord b) => Ord (Pointwise a b) where
   (<=) :: Pointwise a b -> Pointwise a b -> Bool
-  Pointwise (x,y) <= Pointwise (x',y') = x <= x'  && y <= y' 
+  Pointwise (x,y) <= Pointwise (x',y') = x <= x' && y <= y' 
     
 
 newtype Lexicographic a b = Lexicographic {getLexicographic :: (a, b)}
@@ -29,7 +30,7 @@ newtype Fun a b = Fun {getFun :: a -> b}
 
 instance (Semigroup b) => Semigroup (Fun a b) where
   (<>) :: Fun a b -> Fun a b -> Fun a b
-  Fun f <> Fun g = Fun (\x -> f x <> g x)  
+  Fun f <> Fun g = Fun $ liftA2 (<>) f g
 
 instance (Monoid b) => Monoid (Fun a b) where
   mempty :: Fun a b
