@@ -7,13 +7,15 @@ import Prelude hiding (reverse)
 
 import Data.Char (isSpace)
 import Data.Function (on)
+import Control.Applicative (liftA2)
 
 newtype Pointwise a b = Pointwise {getPointwise :: (a, b)}
   deriving (Show, Eq)
 
 instance (Ord a, Ord b) => Ord (Pointwise a b) where
   (<=) :: Pointwise a b -> Pointwise a b -> Bool
-  (<=) = undefined
+  Pointwise (x,y) <= Pointwise (x',y') = x <= x' && y <= y' 
+    
 
 newtype Lexicographic a b = Lexicographic {getLexicographic :: (a, b)}
   deriving (Show, Eq)
@@ -21,39 +23,42 @@ newtype Lexicographic a b = Lexicographic {getLexicographic :: (a, b)}
 -- The default instance for tuples and lists
 instance (Ord a, Ord b) => Ord (Lexicographic a b) where
   (<=) :: Lexicographic a b -> Lexicographic a b -> Bool
-  (<=) = undefined
+  Lexicographic (x,y) <= Lexicographic (x',y') =
+    x < x' || x == x' && y <= y' 
 
 newtype Fun a b = Fun {getFun :: a -> b}
 
 instance (Semigroup b) => Semigroup (Fun a b) where
   (<>) :: Fun a b -> Fun a b -> Fun a b
-  (<>) = undefined
+  Fun f <> Fun g = Fun $ liftA2 (<>) f g
 
 instance (Monoid b) => Monoid (Fun a b) where
   mempty :: Fun a b
-  mempty = undefined
+  mempty = Fun $ const mempty 
 
 newtype First a = First {getFirst :: Maybe a}
   deriving (Eq, Show)
 
 instance Semigroup (First a) where
   (<>) :: First a -> First a -> First a
-  (<>) = undefined
+  First (Just x) <> _ = First $ Just x
+  _ <> x = x
 
 instance Monoid (First a) where
   mempty :: First a
-  mempty = undefined
+  mempty = First Nothing 
 
 newtype Last a = Last {getLast :: Maybe a}
   deriving (Eq, Show)
 
 instance Semigroup (Last a) where
   (<>) :: Last a -> Last a -> Last a
-  (<>) = undefined
+  _ <> Last (Just x) = Last (Just x)
+  x <> _ = x
 
 instance Monoid (Last a) where
   mempty :: Last a
-  mempty = undefined
+  mempty = Last Nothing 
 
 newtype Pair a b = Pair {getPair :: (a, b)}
   deriving (Show, Eq)
@@ -61,25 +66,28 @@ newtype Pair a b = Pair {getPair :: (a, b)}
 -- The default instance for tuples
 instance (Semigroup a, Semigroup b) => Semigroup (Pair a b) where
   (<>) :: Pair a b -> Pair a b -> Pair a b
-  (<>) = undefined
+  Pair (x,y) <> Pair (x',y') = Pair (x <> x',y <> y')
 
 instance (Monoid a, Monoid b) => Monoid (Pair a b) where
   mempty :: Pair a b
-  mempty = undefined
+  mempty = Pair (mempty,mempty) 
 
 newtype Dual a = Dual {getDual :: a}
   deriving (Show, Eq)
 
 instance Semigroup a => Semigroup (Dual a) where
   (<>) :: Dual a -> Dual a -> Dual a
-  (<>) = undefined
+  Dual x <> Dual x' = Dual (x' <> x) 
 
 instance Monoid a => Monoid (Dual a) where
   mempty :: Dual a
-  mempty = undefined
+  mempty = Dual mempty 
 
 reverse :: [a] -> [a]
-reverse = undefined
+-- reverse = getDual . foldMap (Dual . (:[]))
+-- this shoud be faster (foldMap uses foldr for []):
+reverse = getDual . foldl (\acc x -> acc <> Dual [x]) mempty
+
 
 data Flux a = Flux
   { sides :: Maybe (a, a)
@@ -92,8 +100,12 @@ flux x = Flux (Just (x, x)) 0
 
 instance (Eq a) => Semigroup (Flux a) where
   (<>) :: Flux a -> Flux a -> Flux a
-  (<>) = undefined
+  Flux Nothing _ <> f = f
+  f <> Flux Nothing _ = f
+  Flux (Just (x,y)) n <> Flux (Just (x',y')) n'
+    | y == x'   = Flux (Just (x,y')) (n+n')
+    | otherwise = Flux (Just (x,y')) (n+n'+1)
 
 instance (Eq a) => Monoid (Flux a) where
   mempty :: Flux a
-  mempty = undefined
+  mempty = Flux Nothing 0 
