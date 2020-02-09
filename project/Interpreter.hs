@@ -111,6 +111,21 @@ evalSynonym = S eval
         Nothing -> Right ("Variable " ++ r ++ " isnt defined")
     eval _ = Right "no synonym"
 
+evalCond :: Eval SchemeValue
+evalCond = do
+    psts <- S eval
+    findTrue psts 
+  where
+    eval (ds, ((SchemeCond psts):xs)) = Left (psts, (ds,xs)) 
+    eval _ = Right "no cond" 
+    findTrue ((p,t):psts) = do
+      p' <- evalVal p
+      case p' of
+        SchemeBool True -> pure t
+        SchemeBool False -> findTrue psts
+        _ -> S $ \_ -> Right "not a bool in cond case"
+    findTrue [] = S $ \_ -> Right "no default case"
+
 evalScheme :: Eval SchemeValue
 evalScheme = asum
   [ evalBool
@@ -120,6 +135,7 @@ evalScheme = asum
   , evalIf
   , evalSynonym
   , evalList
+  , evalCond
   ]
 
 main :: IO ()
