@@ -126,6 +126,13 @@ evalCond = do
         _ -> S $ \_ -> Right "not a bool in cond case"
     findTrue [] = S $ \_ -> Right "no default case"
 
+evalDefinition :: Eval SchemeValue
+evalDefinition = S eval
+  where 
+    eval (ds, (d@(SchemeDefinition _ _ _):xs)) = 
+      Left (d, (d:ds,xs)) 
+    eval _ = Right "no definition" 
+
 evalScheme :: Eval SchemeValue
 evalScheme = asum
   [ evalBool
@@ -136,6 +143,7 @@ evalScheme = asum
   , evalSynonym
   , evalList
   , evalCond
+  , evalDefinition
   ]
 
 defaultDefs = 
