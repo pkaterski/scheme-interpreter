@@ -227,8 +227,15 @@ funCallP = bracket do
   args <- many schemeP
   pure $ SchemeFunctionCall (func, args)
 
+commentsP :: Parser [()]
+commentsP = many $ do
+  ws
+  _ <- charP (==';')
+  _ <- many $ charP (/='\n')
+  pure ()
+
 schemeP ::Parser SchemeValue
-schemeP = ws *> asum
+schemeP = commentsP *> ws *> asum
   [ boolP
   , funCallP
   , doubleP

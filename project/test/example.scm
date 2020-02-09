@@ -1,5 +1,5 @@
 
-(define (lul x) x)
+;  (define (lul x) x)
 
 (define (f x) (* x x))
 (define x 10)
