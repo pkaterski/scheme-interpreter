@@ -204,21 +204,31 @@ lambdaP = SchemeLambda <$>
     syn = ws *> some (charP isLetter) <* ws
     body = schemeP <|> bracket schemeP
 
+funcNameP :: Parser String
+funcNameP = do
+  beginning <- some noNum
+  ending    <- many withNum
+  let funcName = beginning ++ ending
+  if notKeyword funcName
+  then pure funcName
+  else empty
+  where
+    noNum = asum
+      [ charP (=='*')
+      , charP (=='+')
+      , charP isLetter ]
+    withNum = noNum <|> charP isDigit
 
 funCallP :: Parser SchemeValue
-funCallP = SchemeFunctionCall <$>
-         bracket do (,) <$> fun <*> many schemeP
-  where
-    fun = do
-      ws <- nonSpaceP
-      if notKeyword ws
-      then return ws
-      else empty
-    nonSpaceP = ws *> some (charP (/=' ')) <* ws
+funCallP = bracket do
+  func <- funcNameP
+  args <- many schemeP
+  pure $ SchemeFunctionCall (func, args)
 
 schemeP ::Parser SchemeValue
 schemeP = ws *> asum
   [ boolP
+  , funCallP
   , doubleP
   , integerP
   , schemeStringP
@@ -228,7 +238,6 @@ schemeP = ws *> asum
   , ifP
   , defP
   , lambdaP
-  , funCallP
   ] <* ws
 
 
