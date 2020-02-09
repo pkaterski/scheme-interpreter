@@ -142,11 +142,22 @@ evalFunCall =
   where
     eval (ds, ((SchemeFunctionCall f args):xs)) = 
       case f of
-        "-" -> undefined
-        "+" -> undefined
-        "car" -> undefined
-        "cdr" -> undefined
-        "eq?" -> undefined
+        "-" -> undefined --not supported yet
+        "+" -> do
+          s <- evalPlus ds args
+          Right (s,(ds,xs)) 
+        "*" -> do
+          s <- evalProd ds args
+          Right (s,(ds,xs)) 
+        "car" -> do
+          s <- evalCar ds args
+          Right (s,(ds,xs)) 
+        "cdr" -> do
+          s <- evalCdr ds args
+          Right (s,(ds,xs)) 
+        "eq?" -> do
+          s <- evalPlus ds args
+          Right (s,(ds,xs)) 
         _ -> case findDefinition f ds of
           Just (SchemeDefinition g params body) ->
             let synonyms = match ds args params
@@ -171,6 +182,73 @@ evalFunCall =
     match _ [] _ = Left "args are not enough"
     match _ _ [] = Left "params are not enough" 
 
+evalPlus :: [SchemeValue] -> [SchemeValue] -> Either String SchemeValue
+evalPlus ds (x:xs) = do
+  (v,_) <- app (evalVal x) (ds,[])
+  case v of
+    SchemeInteger x -> do
+      s <- evalPlus ds xs
+      case s of
+        SchemeDouble s -> 
+          pure $ SchemeDouble $ (fromIntegral x) + s
+        _ -> error "imposible"
+    SchemeDouble x -> do
+      s <- evalPlus ds xs
+      case s of
+        SchemeDouble s -> 
+          pure $ SchemeDouble $ x + s
+        _ -> error "imposible"
+    _ -> Left "cant add non-numbers"
+evalPlus _ [] = Right $ SchemeDouble 0
+
+
+
+evalProd :: [SchemeValue] -> [SchemeValue] -> Either String SchemeValue
+evalProd ds (x:xs) = do
+  (v,_) <- app (evalVal x) (ds,[])
+  case v of
+    SchemeInteger x -> do
+      s <- evalProd ds xs
+      case s of
+        SchemeDouble s -> 
+          pure $ SchemeDouble $ (fromIntegral x) * s
+        _ -> error "imposible"
+    SchemeDouble x -> do
+      s <- evalProd ds xs
+      case s of
+        SchemeDouble s -> 
+          pure $ SchemeDouble $ x * s
+        _ -> error "imposible"
+    _ -> Left "cant add non-numbers"
+evalProd _ [] = Right $ SchemeDouble 1
+
+
+evalEq :: [SchemeValue] -> [SchemeValue] -> Either String SchemeValue
+evalEq ds (x:y:[]) = do
+  (s,_) <- app (evalVal x) (ds,[]) 
+  (t,_) <- app (evalVal y) (ds,[]) 
+  pure $ SchemeBool $ s == t
+evalEq _ _ = Left "you can only compare 2 values"
+
+evalCar :: [SchemeValue] -> [SchemeValue] -> Either String SchemeValue
+evalCar ds (l:[]) = do
+  (l',_) <- app (evalVal l) (ds,[])
+  case l' of
+    SchemeList xs -> pure $ head xs 
+    _ -> Left "car accepts only lists"
+evalCar _ _ = Left "car accepts 1 arg"
+
+
+
+evalCdr :: [SchemeValue] -> [SchemeValue] -> Either String SchemeValue
+evalCdr ds (l:[]) = do
+  (l',_) <- app (evalVal l) (ds,[])
+  case l' of
+    SchemeList xs -> pure $ SchemeList $ tail xs 
+    _ -> Left "cdr accepts only lists"
+evalCdr _ _ = Left "cdr accepts 1 arg"
+
+
 evalScheme :: Eval SchemeValue
 evalScheme = asum
   [ evalBool
@@ -182,6 +260,7 @@ evalScheme = asum
   , evalList
   , evalCond
   , evalDefinition
+  , evalFunCall
   ]
 
 defaultDefs = 
