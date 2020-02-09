@@ -21,8 +21,8 @@ data SchemeValue
   | SchemeIf SchemeValue SchemeValue SchemeValue
   | SchemeCond [(SchemeValue,SchemeValue)]
   | SchemeDefinition String [String] SchemeValue
-  | SchemeLambda ([String], SchemeValue)
-  | SchemeFunctionCall (String, [SchemeValue])
+  | SchemeLambda [String] SchemeValue
+  | SchemeFunctionCall String [SchemeValue]
   deriving (Eq, Show)
 
 
@@ -194,7 +194,7 @@ defP = bracket do
 
 
 lambdaP :: Parser SchemeValue
-lambdaP = SchemeLambda <$>
+lambdaP = uncurry SchemeLambda <$>
    bracket
     do isWord "lambda" *> do (,) <$> head <*> body
   where
@@ -225,7 +225,7 @@ funCallP :: Parser SchemeValue
 funCallP = bracket do
   func <- funcNameP
   args <- many schemeP
-  pure $ SchemeFunctionCall (func, args)
+  pure $ SchemeFunctionCall func args
 
 commentsP :: Parser [()]
 commentsP = many $ do
