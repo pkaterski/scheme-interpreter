@@ -129,8 +129,10 @@ evalCond = do
 evalDefinition :: Eval SchemeValue
 evalDefinition = S eval
   where 
-    eval (ds, (d@(SchemeDefinition _ _ _):xs)) = 
-      Left (d, (d:ds,xs)) 
+    eval (ds, (d@(SchemeDefinition r _ _):xs)) = 
+      case findDefinition r ds of
+        Nothing -> Left (d, (d:ds,xs)) 
+        _       -> Right "that name is already defined"
     eval _ = Right "no definition" 
 
 evalScheme :: Eval SchemeValue
