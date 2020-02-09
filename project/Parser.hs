@@ -68,7 +68,6 @@ boolP = trueP <|> falseP
     falseP = SchemeBool False <$ stringP "#f"
 
 
--- this could be refactored.. to Parser Integer and simplified below
 digitsP :: Parser String
 digitsP = some $ charP isDigit
 
