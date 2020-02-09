@@ -105,9 +105,13 @@ ws = many $ charP isSpace
 
 bracket :: Parser a -> Parser a
 bracket p = do
-  ws *> charP (=='(') *> ws
+  ws
+  charP (=='(')
+  ws
   x <- p
-  ws *> charP (==')') *> ws
+  ws
+  charP (==')')
+  ws
   return x
 
 isWord :: String -> Parser String
