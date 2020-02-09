@@ -136,6 +136,38 @@ evalDefinition = S eval
     eval _ = Left "no definition" 
 
 
+evalFunCall :: Eval SchemeValue
+evalFunCall =
+  S eval 
+  where
+    eval (ds, ((SchemeFunctionCall f args):xs)) = 
+      case f of
+        "-" -> undefined
+        "+" -> undefined
+        "car" -> undefined
+        "cdr" -> undefined
+        _ -> case findDefinition f ds of
+          Just (SchemeDefinition g params body) ->
+            let synonyms = match ds args params
+            in case synonyms of
+              -- putting ss infront should redifine
+              Right ss -> app (evalVal body) (ss++ds,[]) 
+              Left t -> Left t
+
+          _ -> Left "no such function defined"
+    eval _ = Left "no function call" 
+
+    match :: [SchemeValue] -> [SchemeValue] -> [String] -> Either String [SchemeValue]
+    match ds (v:vs) (r:rs) = 
+      case app (evalVal v) (ds,[]) of
+        Right (v',_) -> do
+          ms <- match ds vs rs
+          pure $ SchemeDefinition r [] v' : ms 
+        Left t -> Left t 
+    match _ [] [] = Right []
+    match _ [] r = Left "args are not enough"
+    match _ _ [] = Left "params are not enough" 
+
 evalScheme :: Eval SchemeValue
 evalScheme = asum
   [ evalBool
