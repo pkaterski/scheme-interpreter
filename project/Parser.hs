@@ -215,6 +215,9 @@ funcNameP = do
     noNum = asum
       [ charP (=='*')
       , charP (=='+')
+      , charP (=='-')
+      , charP (=='?')
+      , charP (=='\'')
       , charP isLetter ]
     withNum = noNum <|> charP isDigit
 
