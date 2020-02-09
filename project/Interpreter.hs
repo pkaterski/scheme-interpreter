@@ -138,6 +138,10 @@ evalScheme = asum
   , evalCond
   ]
 
+defaultDefs = 
+  [ SchemeDefinition "else" [] (SchemeBool True)
+  ]
+
 main :: IO ()
 main = do 
   x <- readFile "test/example.scm" 
