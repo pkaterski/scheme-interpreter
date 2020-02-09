@@ -80,6 +80,12 @@ evalDouble = S eval
     eval _ = Right "no double" 
 
 
+evalList :: Eval SchemeValue 
+evalList = S eval
+  where
+    eval (ds, (r@(SchemeList _):xs)) = Left (r,(ds,xs))
+    eval _ = Right "no list" 
+
 evalIf :: Eval SchemeValue
 evalIf = do
     (p, t, f) <- S eval
@@ -113,6 +119,7 @@ evalScheme = asum
   , evalDouble
   , evalIf
   , evalSynonym
+  , evalList
   ]
 
 main :: IO ()
