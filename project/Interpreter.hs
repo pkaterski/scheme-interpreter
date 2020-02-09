@@ -11,9 +11,9 @@ getUninterpreted :: State -> [SchemeValue]
 getUninterpreted = snd
 
 
-newtype Eval a = S (State -> Either (a,State) String)
+newtype Eval a = S (State -> Either String (a,State))
 
-app :: Eval a -> State -> Either (a,State) String
+app :: Eval a -> State -> Either String (a,State)
 app (S st) x = st x
 
 instance Functor Eval where
@@ -22,7 +22,7 @@ instance Functor Eval where
     pure $ g x 
 
 instance Applicative Eval where
-  pure x = S $ \s -> Left (x, s)
+  pure x = S $ \s -> Right (x, s)
   sf <*> sx = do
     f <- sf
     x <- sx
@@ -32,14 +32,14 @@ instance Monad Eval where
   sx >>= f = S $ \s -> 
     let ms = app sx s 
     in case ms of
-      Left (x, s') -> app (f x) s'
-      Right s      -> Right s 
+      Right (x, s') -> app (f x) s'
+      Left s        -> Left s 
 
 instance Alternative Eval where
-  empty = S $ \_ -> Right "no scheme value" 
+  empty = S $ \_ -> Left "no scheme value" 
   S sx <|> S sy = S $ \s ->
     case sx s of
-      Right _ -> sy s
+      Left _ -> sy s
       out     -> out 
 
 
@@ -56,35 +56,35 @@ findDefinition s [] = Nothing
 evalBool :: Eval SchemeValue 
 evalBool = S eval
   where
-    eval (ds, (r@(SchemeBool _):xs)) = Left (r,(ds,xs))
-    eval _ = Right "no bool" 
+    eval (ds, (r@(SchemeBool _):xs)) = Right (r,(ds,xs))
+    eval _ = Left "no bool" 
 
 evalString :: Eval SchemeValue 
 evalString = S eval
   where
-    eval (ds, (r@(SchemeString _):xs)) = Left (r,(ds,xs))
-    eval _ = Right "no string" 
+    eval (ds, (r@(SchemeString _):xs)) = Right (r,(ds,xs))
+    eval _ = Left "no string" 
 
 
 evalInteger :: Eval SchemeValue 
 evalInteger = S eval
   where
-    eval (ds, (r@(SchemeInteger _):xs)) = Left (r,(ds,xs))
-    eval _ = Right "no int" 
+    eval (ds, (r@(SchemeInteger _):xs)) = Right (r,(ds,xs))
+    eval _ = Left "no int" 
 
 
 evalDouble :: Eval SchemeValue 
 evalDouble = S eval
   where
-    eval (ds, (r@(SchemeDouble _):xs)) = Left (r,(ds,xs))
-    eval _ = Right "no double" 
+    eval (ds, (r@(SchemeDouble _):xs)) = Right (r,(ds,xs))
+    eval _ = Left "no double" 
 
 
 evalList :: Eval SchemeValue 
 evalList = S eval
   where
-    eval (ds, (r@(SchemeList _):xs)) = Left (r,(ds,xs))
-    eval _ = Right "no list" 
+    eval (ds, (r@(SchemeList _):xs)) = Right (r,(ds,xs))
+    eval _ = Left "no list" 
 
 evalIf :: Eval SchemeValue
 evalIf = do
@@ -95,8 +95,8 @@ evalIf = do
       SchemeBool False -> pure f
       _ -> empty
   where
-    eval (ds, ((SchemeIf p t f):xs)) = Left ((p,t,f), (ds,xs)) 
-    eval _ = Right "no if" 
+    eval (ds, ((SchemeIf p t f):xs)) = Right ((p,t,f), (ds,xs)) 
+    eval _ = Left "no if" 
 
 evalVal :: SchemeValue -> Eval SchemeValue
 evalVal v = S $ \(ds,_) ->
@@ -107,33 +107,34 @@ evalSynonym = S eval
   where
     eval (ds, ((SchemeSynonym r):xs)) = 
       case findDefinition r ds of
-        Just x  -> Left (x,(ds,xs))
-        Nothing -> Right ("Variable " ++ r ++ " isnt defined")
-    eval _ = Right "no synonym"
+        Just x  -> Right (x,(ds,xs))
+        Nothing -> Left ("Variable " ++ r ++ " isnt defined")
+    eval _ = Left "no synonym"
 
 evalCond :: Eval SchemeValue
 evalCond = do
     psts <- S eval
     findTrue psts 
   where
-    eval (ds, ((SchemeCond psts):xs)) = Left (psts, (ds,xs)) 
-    eval _ = Right "no cond" 
+    eval (ds, ((SchemeCond psts):xs)) = Right (psts, (ds,xs)) 
+    eval _ = Left "no cond" 
     findTrue ((p,t):psts) = do
       p' <- evalVal p
       case p' of
         SchemeBool True -> pure t
         SchemeBool False -> findTrue psts
-        _ -> S $ \_ -> Right "not a bool in cond case"
-    findTrue [] = S $ \_ -> Right "no default case"
+        _ -> S $ \_ -> Left "not a bool in cond case"
+    findTrue [] = S $ \_ -> Left "no default case"
 
 evalDefinition :: Eval SchemeValue
 evalDefinition = S eval
   where 
     eval (ds, (d@(SchemeDefinition r _ _):xs)) = 
       case findDefinition r ds of
-        Nothing -> Left (d, (d:ds,xs)) 
-        _       -> Right "that name is already defined"
-    eval _ = Right "no definition" 
+        Nothing -> Right (d, (d:ds,xs)) 
+        _       -> Left "that name is already defined"
+    eval _ = Left "no definition" 
+
 
 evalScheme :: Eval SchemeValue
 evalScheme = asum
