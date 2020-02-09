@@ -11,9 +11,9 @@ getUninterpreted :: State -> [SchemeValue]
 getUninterpreted = snd
 
 
-newtype Eval a = S (State -> Maybe (a,State))
+newtype Eval a = S (State -> Either (a,State) String)
 
-app :: Eval a -> State -> Maybe (a,State)
+app :: Eval a -> State -> Either (a,State) String
 app (S st) x = st x
 
 instance Functor Eval where
@@ -22,7 +22,7 @@ instance Functor Eval where
     pure $ g x 
 
 instance Applicative Eval where
-  pure x = S $ \s -> Just (x, s)
+  pure x = S $ \s -> Left (x, s)
   sf <*> sx = do
     f <- sf
     x <- sx
@@ -32,14 +32,14 @@ instance Monad Eval where
   sx >>= f = S $ \s -> 
     let ms = app sx s 
     in case ms of
-      Just (x, s') -> app (f x) s'
-      Nothing      -> Nothing 
+      Left (x, s') -> app (f x) s'
+      Right s      -> Right s 
 
 instance Alternative Eval where
-  empty = S $ \_ -> Nothing
+  empty = S $ \_ -> Right "no scheme value" 
   S sx <|> S sy = S $ \s ->
     case sx s of
-      Nothing -> sy s
+      Right _ -> sy s
       out     -> out 
 
 
@@ -54,31 +54,29 @@ findDefinition s [] = Nothing
 evalBool :: Eval SchemeValue 
 evalBool = S eval
   where
-    eval (ds, (r@(SchemeBool _):xs)) = Just (r,(ds,xs))
-    eval _ = Nothing
+    eval (ds, (r@(SchemeBool _):xs)) = Left (r,(ds,xs))
+    eval _ = Right "no bool" 
 
 evalString :: Eval SchemeValue 
 evalString = S eval
   where
-    eval (ds, (r@(SchemeString _):xs)) = Just (r,(ds,xs))
-    eval _ = Nothing
+    eval (ds, (r@(SchemeString _):xs)) = Left (r,(ds,xs))
+    eval _ = Right "no string" 
 
 
 evalInteger :: Eval SchemeValue 
 evalInteger = S eval
   where
-    eval (ds, (r@(SchemeInteger _):xs)) = Just (r,(ds,xs))
-    eval _ = Nothing
+    eval (ds, (r@(SchemeInteger _):xs)) = Left (r,(ds,xs))
+    eval _ = Right "no int" 
 
 
 evalDouble :: Eval SchemeValue 
 evalDouble = S eval
   where
-    eval (ds, (r@(SchemeDouble _):xs)) = Just (r,(ds,xs))
-    eval _ = Nothing
+    eval (ds, (r@(SchemeDouble _):xs)) = Left (r,(ds,xs))
+    eval _ = Right "no double" 
 
-evalId :: Eval SchemeValue
-evalId = S $ \s@(ds, (x:xs)) -> Just (x, (ds, xs))
 
 evalIf :: Eval SchemeValue
 evalIf = do
@@ -89,8 +87,8 @@ evalIf = do
       SchemeBool False -> pure f
       _ -> empty
   where
-    eval (ds, ((SchemeIf p t f):xs)) = Just ((p,t,f), (ds,xs)) 
-    eval _ = Nothing
+    eval (ds, ((SchemeIf p t f):xs)) = Left ((p,t,f), (ds,xs)) 
+    eval _ = Right "no if" 
 
 evalVal :: SchemeValue -> Eval SchemeValue
 evalVal v = S $ \(ds,_) ->
