@@ -44,9 +44,11 @@ instance Alternative Eval where
 
 
 findDefinition :: String -> [SchemeValue] -> Maybe SchemeValue
-findDefinition s (d@(SchemeDefinition s' _ _):ds) = 
+findDefinition s (d@(SchemeDefinition s' args body):ds) = 
   if s == s' 
-  then Just d 
+  then case args of
+    [] -> Just body
+    _  -> Just d -- TODO lambda ? 
   else findDefinition s ds
 findDefinition s (_:ds) = findDefinition s ds
 findDefinition s [] = Nothing 
@@ -94,6 +96,14 @@ evalVal :: SchemeValue -> Eval SchemeValue
 evalVal v = S $ \(ds,_) ->
    app evalScheme (ds,[v])
 
+evalSynonym :: Eval SchemeValue
+evalSynonym = S eval 
+  where
+    eval (ds, ((SchemeSynonym r):xs)) = 
+      case findDefinition r ds of
+        Just x  -> Left (x,(ds,xs))
+        Nothing -> Right ("Variable " ++ r ++ " isnt defined")
+    eval _ = Right "no synonym"
 
 evalScheme :: Eval SchemeValue
 evalScheme = asum
@@ -102,6 +112,7 @@ evalScheme = asum
   , evalInteger
   , evalDouble
   , evalIf
+  , evalSynonym
   ]
 
 main :: IO ()
