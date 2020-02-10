@@ -49,4 +49,25 @@
 
 (cons 5 (cons 1.9 '()))
 
+(define (range n)
+  (if (eq? n 0.0)
+      '()
+      (cons n (range (+ n -1)))))
+
+(range 10)
+
+
+(define (append xs ys)
+  (if (eq? xs '())
+      ys
+      (cons (car xs) (append (cdr xs) ys))))
+
+(append '(1 2 3) '(5 6))
+
+(define (reverse xs)
+  (if (eq? xs '())
+      '()
+      (append (reverse (cdr xs)) (cons (car xs) '()))))
+
+(reverse '(a b c))
 
