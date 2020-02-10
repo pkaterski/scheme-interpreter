@@ -166,8 +166,8 @@ listP = do
   where
     purevals =
           boolP
-      <|> integerP
       <|> doubleP
+      <|> integerP
       <|> symbolP
       <|> fmap SchemeList do bracket $ many vals
     vals = ws *> purevals <* ws
