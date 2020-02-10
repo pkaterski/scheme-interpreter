@@ -1,10 +1,16 @@
+(define (fact n)
+  (if (eq? 0.0 n)
+      1
+      (* n (fact (+ n -1)))))
+
+(fact 5)
 
 ;  (define (lul x) x)
 
 (define (f x) (* x x))
 (define x 10)
 
-(f x) 
+(f x)
 
 (if (eq? x 10) "ivancho" #t)
 
