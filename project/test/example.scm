@@ -47,3 +47,6 @@
 
 (cdr (cdr '(4.0 9 define)))
 
+(cons 5 (cons 1.9 '()))
+
+

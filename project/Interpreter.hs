@@ -155,6 +155,9 @@ evalFunCall =
         "cdr" -> do
           s <- evalCdr ds args
           Right (s,(ds,xs)) 
+        "cons" -> do
+          s <- evalCons ds args
+          Right (s,(ds,xs)) 
         "eq?" -> do
           s <- evalEq ds args
           Right (s,(ds,xs)) 
@@ -238,6 +241,16 @@ evalCar ds (l:[]) = do
     _ -> Left "car accepts only lists"
 evalCar _ _ = Left "car accepts 1 arg"
 
+
+evalCons :: [SchemeValue] -> [SchemeValue] -> Either String SchemeValue
+evalCons ds (v:xs:[]) = do
+  (v',_)  <- app (evalVal v) (ds,[])
+  (xs',_) <- app (evalVal xs) (ds,[])
+  case xs' of
+    SchemeList ys -> Right $ SchemeList (v':ys)
+    _             -> Left "cant cons to non-list"
+  
+evalCons _ _ = Left "cons takes 2 arguments"
 
 
 evalCdr :: [SchemeValue] -> [SchemeValue] -> Either String SchemeValue
