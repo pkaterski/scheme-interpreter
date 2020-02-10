@@ -27,4 +27,9 @@
 
 (c f h 5)
 
+(define (pow n m)
+  (if (eq? m 0.0)
+      1
+      (* n (pow n (+ m -1)))))
 
+(pow 4 3)
