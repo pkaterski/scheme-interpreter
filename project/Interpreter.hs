@@ -91,8 +91,8 @@ evalIf = do
     (p, t, f) <- S eval
     p' <- evalVal p
     case p' of
-      SchemeBool True -> pure t
-      SchemeBool False -> pure f
+      SchemeBool True -> evalVal t
+      SchemeBool False -> evalVal f
       _ -> empty
   where
     eval (ds, ((SchemeIf p t f):xs)) = Right ((p,t,f), (ds,xs)) 
@@ -121,7 +121,7 @@ evalCond = do
     findTrue ((p,t):psts) = do
       p' <- evalVal p
       case p' of
-        SchemeBool True -> pure t
+        SchemeBool True -> evalVal t
         SchemeBool False -> findTrue psts
         _ -> S $ \_ -> Left "not a bool in cond case"
     findTrue [] = S $ \_ -> Left "no default case"
@@ -273,11 +273,14 @@ main = do
   putStrLn $ 
     case many schemeP `runParser` x of
       Just (s,_) ->
-        case app (many evalScheme) (defaultDefs, s) of
+        case app shitEval (defaultDefs, s) of
           Right (rs,_) -> disp rs
           Left t -> t
       Nothing -> "didn't parse"
   return ()
+
+-- this is very userful for debugging this shit
+shitEval = many evalScheme
 
 disp :: [SchemeValue] -> String
 disp (SchemeDefinition _ _ _:xs) = disp xs 
