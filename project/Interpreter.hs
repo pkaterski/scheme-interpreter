@@ -99,8 +99,8 @@ evalIf = do
     eval _ = Left "no if" 
 
 evalVal :: SchemeValue -> Eval SchemeValue
-evalVal v = S $ \(ds,_) ->
-   app evalScheme (ds,[v])
+evalVal v = S $ \(ds,xs) ->
+   app evalScheme (ds,(v:xs))
 
 evalSynonym :: Eval SchemeValue
 evalSynonym = S eval 
@@ -156,7 +156,7 @@ evalFunCall =
           s <- evalCdr ds args
           Right (s,(ds,xs)) 
         "eq?" -> do
-          s <- evalPlus ds args
+          s <- evalEq ds args
           Right (s,(ds,xs)) 
         _ -> case findDefinition f ds of
           Just (SchemeDefinition g params body) ->
@@ -272,9 +272,17 @@ main = do
   x <- readFile "test/example.scm" 
   putStrLn $ 
     case many schemeP `runParser` x of
-      Just s -> show s
-      Nothing -> "kur"
+      Just (s,_) ->
+        case app (many evalScheme) (defaultDefs, s) of
+          Right (rs,_) -> disp rs
+          Left t -> t
+      Nothing -> "didn't parse"
   return ()
+
+disp :: [SchemeValue] -> String
+disp (SchemeDefinition _ _ _:xs) = disp xs 
+disp (x:xs) = show x ++ "\n" ++ disp xs
+disp [] = ""
 
 
 

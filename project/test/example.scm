@@ -9,10 +9,10 @@
 (if (eq? x 10) "ivancho" #t)
 
 (cond
-    ((eq? (- x 10) 0) "musagenitsa")
+    ((eq? (+ x 10) 0) "musagenitsa")
     (#t 2))
 
-(define g (lambda (x y) (+ x y)))
+(define (g x y) (+ x y))
 
 (g 101 x)
 
