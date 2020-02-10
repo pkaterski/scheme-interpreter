@@ -33,3 +33,12 @@
       (* n (pow n (+ m -1)))))
 
 (pow 4 3)
+
+(define (A m n)
+    (cond
+        ((eq? m 0.0) (+ n 1))
+        ((eq? n 0.0) (A (+ m -1) 1))
+        (else (A (+ m -1) (A m (+ n -1))))))
+
+(A 3 2)
+
