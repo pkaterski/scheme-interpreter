@@ -40,7 +40,7 @@ searchDefinition s (d@(SchemeDefinition s' _ _):ds) =
   if s == s'
   then Just d
   else searchDefinition s ds
-searchDefinition _ _ = error "impossible, state contains thing that are not definitions"
+searchDefinition _ _ = error "impossible, state contains a non-definition"
 
 isDefined :: String -> [SchemeValue] -> Bool
 isDefined s ds = case searchDefinition s ds of
