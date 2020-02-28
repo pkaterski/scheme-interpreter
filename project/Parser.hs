@@ -20,7 +20,7 @@ data SchemeValue
   | SchemeSynonym String -- any non-keyword
   | SchemeIf SchemeValue SchemeValue SchemeValue
   | SchemeCond [(SchemeValue,SchemeValue)]
-  | SchemeDefinition String [String] SchemeValue
+  | SchemeDefinition String [String] SchemeValue -- TODO: make body [SchemeValue] (for subdefs)
   | SchemeLambda [String] SchemeValue
   | SchemeFunctionCall String [SchemeValue]
   deriving (Eq, Show)
