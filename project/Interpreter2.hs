@@ -34,6 +34,44 @@ put s = Eval \_ -> Right (s, ())
 oops :: String -> Eval a
 oops err = Eval \_ -> Left err
 
+searchDefinition :: String -> [SchemeValue] -> Maybe SchemeValue
+searchDefinition _ [] = Nothing
+searchDefinition s (d@(SchemeDefinition s' _ _):ds) = 
+  if s == s'
+  then Just d
+  else searchDefinition s ds
+searchDefinition _ _ = error "impossible, state contains thing that are not definitions"
+
+isDefined :: String -> [SchemeValue] -> Bool
+isDefined s ds = case searchDefinition s ds of
+  Just _  -> True
+  Nothing -> False
+
+
+evalIf :: SchemeValue -> Eval SchemeValue
+evalIf (SchemeIf p t f) = do
+  p' <- eval p
+  case p' of
+    SchemeBool True  -> eval t
+    SchemeBool False -> eval f
+    _                -> oops $ "condition in if not a bool: " ++ show p
+
+evalCond :: SchemeValue -> Eval SchemeValue
+evalCond (SchemeCond ((p,v):xs)) = do
+  p' <- eval p
+  case p' of
+    SchemeBool True  -> eval v
+    SchemeBool False -> evalCond $ SchemeCond xs
+    _                -> oops $ "condition in cond not a bool: " ++ show p
+     
+
+eval :: SchemeValue -> Eval SchemeValue
+eval v@(SchemeBool _) = pure v
+eval v@(SchemeInteger _) = pure v
+eval v@(SchemeDouble _) = pure v
+eval v@(SchemeString _) = pure v
+eval v@(SchemeIf _ _ _) = evalIf v
+eval v@(SchemeCond _) = evalCond v
 
 
 main :: IO ()
