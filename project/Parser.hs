@@ -20,9 +20,12 @@ data SchemeValue
   | SchemeSynonym String -- any non-keyword
   | SchemeIf SchemeValue SchemeValue SchemeValue
   | SchemeCond [(SchemeValue,SchemeValue)]
-  | SchemeDefinition String [String] SchemeValue -- TODO: make body [SchemeValue] (for subdefs)
-  | SchemeLambda [String] SchemeValue
+  | SchemeDefinition String Lambda -- TODO: make body [SchemeValue] (for subdefs)
+  | SchemeLambda Lambda 
   | SchemeFunctionCall String [SchemeValue]
+  deriving (Eq, Show)
+
+data Lambda = Lambda [String] SchemeValue
   deriving (Eq, Show)
 
 
@@ -172,7 +175,8 @@ listP = do
       <|> fmap SchemeList do bracket $ many vals
     vals = ws *> purevals <* ws
 
--- TODO do notation below maybe?
+
+
 defP :: Parser SchemeValue
 defP = bracket do
   isWord "define"
@@ -187,21 +191,25 @@ defP = bracket do
   ws
 
   pure $ case notBody of
-    Left single -> SchemeDefinition single [] body
+    Left single -> SchemeDefinition single $ Lambda [] body
 
     Right [] -> error "the impossible has happened"
-    Right (x:xs) -> SchemeDefinition x xs body
+    Right (x:xs) -> SchemeDefinition x $ Lambda xs body
 
 
 lambdaP :: Parser SchemeValue
-lambdaP = uncurry SchemeLambda <$>
-   bracket
-    do isWord "lambda" *> do (,) <$> head <*> body
+lambdaP = bracket do
+  isWord "lambda"
+  params <- (:[]) <$> syn <|> bracket do many syn
+  body   <- schemeP <|> bracket schemeP
+  pure $ SchemeLambda $ Lambda params body
   where
-    head = (:[]) <$> syn
-        <|> bracket do many syn
-    syn = ws *> some (charP isLetter) <* ws
-    body = schemeP <|> bracket schemeP
+    syn = do
+      ws
+      v <- some (charP isLetter) 
+      ws
+      pure v
+
 
 funcNameP :: Parser String
 funcNameP = do

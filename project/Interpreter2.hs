@@ -37,7 +37,7 @@ oops err = Eval \s -> Left $ err ++ "\n the env is:\n" ++ show s
 
 searchDefinition :: String -> [SchemeValue] -> Maybe SchemeValue
 searchDefinition _ [] = Nothing
-searchDefinition s (d@(SchemeDefinition s' args body):ds) = 
+searchDefinition s (d@(SchemeDefinition s' (Lambda args body)):ds) = 
   if s == s'
   then case args of
     [] -> Just body 
@@ -69,7 +69,7 @@ evalCond (SchemeCond ((p,v):xs)) = do
      
 
 evalDefinition :: SchemeValue -> Eval SchemeValue 
-evalDefinition v@(SchemeDefinition s _ _) = do
+evalDefinition v@(SchemeDefinition s _) = do
   currDefs <- get
   if isDefined s currDefs
   then oops $ "already existing def: " ++ show v
@@ -92,7 +92,7 @@ evalFunctionCall v@(SchemeFunctionCall s args) =
   else do
   currDefs <- get
   case searchDefinition s currDefs of
-    Just d@(SchemeDefinition _ params body) -> do
+    Just d@(SchemeDefinition _ (Lambda params body)) -> do
       ds <- match args params
       -- putting defs on top, because def searching algo only finds the defs on top, so this will rewrite them :)
       case runEval (eval body) (ds++currDefs) of
@@ -106,7 +106,7 @@ match :: [SchemeValue] -> [String] -> Eval [SchemeValue]
 match (a:as) (p:ps) = do
   a' <- eval a
   xs <- match as ps
-  pure $ SchemeDefinition p [] a' : xs
+  pure $ SchemeDefinition p (Lambda [] a') : xs
 match [] [] = pure []
 match [] ps  = oops $ "match: args are not enough, unused params: " ++ show ps 
 match as []  = oops $ "match: params are not enough, unused args: " ++ show as 
@@ -199,7 +199,7 @@ eval v@(SchemeSymbol _) = pure v
 eval v@(SchemeList _) = pure v
 eval v@(SchemeIf _ _ _) = evalIf v
 eval v@(SchemeCond _) = evalCond v
-eval v@(SchemeDefinition _ _ _) = evalDefinition v
+eval v@(SchemeDefinition _ _) = evalDefinition v
 eval v@(SchemeSynonym _) = evalSynonym v
 eval v@(SchemeFunctionCall _ _) = evalFunctionCall v
 
@@ -213,7 +213,7 @@ evalRec [] = pure []
 
 
 defaultDefs = 
-  [ SchemeDefinition "else" [] (SchemeBool True)
+  [ SchemeDefinition "else" $ Lambda [] (SchemeBool True)
   ]
 
 
@@ -231,7 +231,7 @@ main = do
 
 
 disp :: [SchemeValue] -> String
-disp (SchemeDefinition _ _ _:xs) = disp xs 
+disp (SchemeDefinition _ _:xs) = disp xs 
 disp (x:xs) = show x ++ "\n" ++ disp xs
 disp [] = ""
 
