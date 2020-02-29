@@ -211,12 +211,7 @@ eval v@(SchemeSynonym _) = evalSynonym v
 eval v@(SchemeFunctionCall _ _) = evalFunctionCall v
 
 evalRec :: [SchemeValue] -> Eval [SchemeValue]
-evalRec (x:xs) = do
-  x'  <- eval x
-  xs' <- evalRec xs
-  pure $ x' : xs'
-evalRec [] = pure []
-
+evalRec xs = sequenceA $ map eval xs
 
 
 defaultDefs = 
