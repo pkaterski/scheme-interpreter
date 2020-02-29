@@ -8,8 +8,6 @@ import Control.Applicative
 import Data.Foldable (asum)
 import Data.Char
 
--- ideas: else == #t as a keyword and synonym
--- TODO maybe add separate types for complex ones
 data SchemeValue
   = SchemeBool Bool
   | SchemeInteger Integer
@@ -20,12 +18,15 @@ data SchemeValue
   | SchemeSynonym String -- any non-keyword
   | SchemeIf SchemeValue SchemeValue SchemeValue
   | SchemeCond [(SchemeValue,SchemeValue)]
-  | SchemeDefinition String Lambda -- TODO: make body [SchemeValue] (for subdefs)
+  | SchemeDefinition Definition 
   | SchemeLambda Lambda 
   | SchemeFunctionCall String [SchemeValue]
   deriving (Eq, Show)
 
-data Lambda = Lambda [String] SchemeValue
+data Definition = Definition String Lambda 
+  deriving (Eq, Show)
+
+data Lambda = Lambda [String] [Definition] SchemeValue
   deriving (Eq, Show)
 
 
@@ -177,32 +178,33 @@ listP = do
 
 
 
-defP :: Parser SchemeValue
+defP :: Parser Definition 
 defP = bracket do
   isWord "define"
   ws
   let idents = Right <$> bracket (some synonymP)
       singleIdent = Left <$> synonymP
 
-  notBody <- singleIdent <|> idents
+  params <- singleIdent <|> idents
   ws
-
+  defs <- many defP
   body <- schemeP
   ws
 
-  pure $ case notBody of
-    Left single -> SchemeDefinition single $ Lambda [] body
+  pure $ case params of
+    Left single -> Definition single $ Lambda [] defs body
 
     Right [] -> error "the impossible has happened"
-    Right (x:xs) -> SchemeDefinition x $ Lambda xs body
+    Right (x:xs) -> Definition x $ Lambda xs defs body
 
 
 lambdaP :: Parser SchemeValue
 lambdaP = bracket do
   isWord "lambda"
   params <- (:[]) <$> syn <|> bracket do many syn
+  defs   <- many defP
   body   <- schemeP <|> bracket schemeP
-  pure $ SchemeLambda $ Lambda params body
+  pure $ SchemeLambda $ Lambda params defs body
   where
     syn = do
       ws
@@ -253,7 +255,7 @@ schemeP = commentsP *> ws *> asum
   , condP
   , listP
   , ifP
-  , defP
+  , SchemeDefinition <$> defP
   , lambdaP
   ] <* ws
 

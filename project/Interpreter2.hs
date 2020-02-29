@@ -4,7 +4,7 @@
 import Parser 
 import Control.Applicative
 
-type State = [SchemeValue] -- the definitions
+type State = [Definition] -- the definitions
 
 newtype Eval a = Eval {runEval :: State -> Either String (State, a)}
 
@@ -35,17 +35,16 @@ put s = Eval \_ -> Right (s, ())
 oops :: String -> Eval a
 oops err = Eval \s -> Left $ err ++ "\n the env is:\n" ++ show s
 
-searchDefinition :: String -> [SchemeValue] -> Maybe SchemeValue
+searchDefinition :: String -> [Definition] -> Maybe SchemeValue
 searchDefinition _ [] = Nothing
-searchDefinition s (SchemeDefinition s' l@(Lambda args body):ds) = 
+searchDefinition s (Definition s' l@(Lambda args _ body):ds) = 
   if s == s'
   then case args of
-    [] -> Just body 
+    [] -> Just body -- lambda w/ no args is a val 
     _  -> Just $ SchemeLambda l 
   else searchDefinition s ds
-searchDefinition _ _ = error "impossible, state contains a non-definition"
 
-isDefined :: String -> [SchemeValue] -> Bool
+isDefined :: String -> [Definition] -> Bool
 isDefined s ds = case searchDefinition s ds of
   Just _  -> True
   Nothing -> False
@@ -69,13 +68,13 @@ evalCond (SchemeCond ((p,v):xs)) = do
      
 
 evalDefinition :: SchemeValue -> Eval SchemeValue 
-evalDefinition v@(SchemeDefinition s _) = do
+evalDefinition (SchemeDefinition v@(Definition s _)) = do
   currDefs <- get
   if isDefined s currDefs
   then oops $ "already existing def: " ++ show v
   else
     do put (v:currDefs)
-       pure v
+       pure $ SchemeDefinition v
 
 evalSynonym :: SchemeValue -> Eval SchemeValue
 evalSynonym v@(SchemeSynonym s) = do
@@ -92,24 +91,26 @@ evalFunctionCall v@(SchemeFunctionCall s args) =
   else do
   currDefs <- get
   case searchDefinition s currDefs of
-    Just (SchemeLambda (Lambda params body)) -> do
+    Just (SchemeLambda (Lambda params ldef body)) -> do
       ds <- match args params
+      let ldef' = map SchemeDefinition ldef
       -- putting defs on top, because def searching algo only finds the defs on top, so this will rewrite them :)
-      case runEval (eval body) (ds++currDefs) of
-       Right (_,res) -> pure res
+      -- run local defs first then run the function
+      case runEval (evalRec (ldef'++body:[])) (ds++currDefs) of
+       Right (_,res) -> pure $ last res --the last should be the body evaluated
        Left s        -> oops $ "local eval err: " ++ s
     Nothing -> oops $ "unknow function is called: " ++ show v
 
 
-match :: [SchemeValue] -> [String] -> Eval [SchemeValue]
+match :: [SchemeValue] -> [String] -> Eval [Definition]
 -- match args params
 match (a:as) (p:ps) = do
   a' <- case a of
-    SchemeDefinition _ l -> 
-      pure $ SchemeDefinition p l
+    SchemeDefinition (Definition _ l) -> 
+      pure $ Definition p l
     _ -> do
       a' <- eval a
-      pure $ SchemeDefinition p (Lambda [] a')
+      pure $ Definition p (Lambda [] [] a')
   xs <- match as ps
   pure $ a' : xs
 match [] [] = pure []
@@ -205,7 +206,7 @@ eval v@(SchemeList _) = pure v
 eval v@(SchemeLambda _) = pure v
 eval v@(SchemeIf _ _ _) = evalIf v
 eval v@(SchemeCond _) = evalCond v
-eval v@(SchemeDefinition _ _) = evalDefinition v
+eval v@(SchemeDefinition _) = evalDefinition v
 eval v@(SchemeSynonym _) = evalSynonym v
 eval v@(SchemeFunctionCall _ _) = evalFunctionCall v
 
@@ -219,7 +220,7 @@ evalRec [] = pure []
 
 
 defaultDefs = 
-  [ SchemeDefinition "else" $ Lambda [] (SchemeBool True)
+  [ Definition "else" $ Lambda [] [] (SchemeBool True)
   ]
 
 
@@ -237,7 +238,7 @@ main = do
 
 
 disp :: [SchemeValue] -> String
-disp (SchemeDefinition _ _:xs) = disp xs 
+disp (SchemeDefinition _:xs) = disp xs 
 disp (x:xs) = show x ++ "\n" ++ disp xs
 disp [] = ""
 
