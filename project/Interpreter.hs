@@ -1,3 +1,4 @@
+-- THIS IS DEPRECATED !
 import Parser 
 import Control.Applicative 
 import Data.Foldable (asum)

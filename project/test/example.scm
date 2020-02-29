@@ -1,3 +1,4 @@
+; this is deprecated
 (define (fact n)
   (if (eq? 0.0 n)
       1
