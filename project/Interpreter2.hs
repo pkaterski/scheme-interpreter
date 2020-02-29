@@ -1,17 +1,17 @@
 {-#LANGUAGE BlockArguments #-}
 {-#LANGUAGE LambdaCase #-}
 
-import Parser 
+import Parser
 import Control.Applicative
 
-type State = [Definition] -- the definitions
+type State = [Definition]
 
 newtype Eval a = Eval {runEval :: State -> Either String (State, a)}
 
 instance Functor Eval where
   fmap g ev = Eval \s -> case runEval ev s of
     Right (s', x) -> Right (s', g x)
-    Left err      -> Left err 
+    Left err      -> Left err
 
 instance Applicative Eval where
   pure x = Eval \s -> Right (s, x)
@@ -27,21 +27,21 @@ instance Monad Eval where
     pure (s'', y)
 
 get :: Eval State
-get = Eval \s -> Right (s, s) 
+get = Eval \s -> Right (s, s)
 
 put :: State -> Eval ()
 put s = Eval \_ -> Right (s, ())
 
 oops :: String -> Eval a
-oops err = Eval \s -> Left $ err ++ "\n the env is:\n" ++ show s
+oops err = Eval \s -> Left $ err -- ++ "\n the env is:\n" ++ show s
 
 searchDefinition :: String -> [Definition] -> Maybe SchemeValue
 searchDefinition _ [] = Nothing
-searchDefinition s (Definition s' l@(Lambda args _ body):ds) = 
+searchDefinition s (Definition s' l@(Lambda args _ body):ds) =
   if s == s'
   then case args of
-    [] -> Just body -- lambda w/ no args is a val 
-    _  -> Just $ SchemeLambda l 
+    [] -> Just body -- lambda w/ no args is a val
+    _  -> Just $ SchemeLambda l
   else searchDefinition s ds
 
 isDefined :: String -> [Definition] -> Bool
@@ -65,9 +65,9 @@ evalCond (SchemeCond ((p,v):xs)) = do
     SchemeBool True  -> eval v
     SchemeBool False -> evalCond $ SchemeCond xs
     _                -> oops $ "condition in cond not a bool: " ++ show p
-     
 
-evalDefinition :: SchemeValue -> Eval SchemeValue 
+
+evalDefinition :: SchemeValue -> Eval SchemeValue
 evalDefinition (SchemeDefinition v@(Definition s _)) = do
   currDefs <- get
   if isDefined s currDefs
@@ -80,33 +80,47 @@ evalSynonym :: SchemeValue -> Eval SchemeValue
 evalSynonym v@(SchemeSynonym s) = do
   currDefs <- get
   case searchDefinition s currDefs of
-    Just d -> pure d 
+    Just d -> pure d
     Nothing -> oops $ "unknow variable used: " ++ show v
 
 
 evalFunctionCall :: SchemeValue -> Eval SchemeValue
 evalFunctionCall v@(SchemeFunctionCall s args) =
   if isBuildin v
-  then evalBuildin v 
+  then evalBuildin v
   else do
   currDefs <- get
   case searchDefinition s currDefs of
     Just (SchemeLambda (Lambda params ldef body)) -> do
       ds <- match args params
-      let ldef' = map SchemeDefinition ldef
-      -- putting defs on top, because def searching algo only finds the defs on top, so this will rewrite them :)
-      -- run local defs first then run the function
-      case runEval (evalRec (ldef'++body:[])) (ds++currDefs) of
-       Right (_,res) -> pure $ last res --the last should be the body evaluated
+      case runEval (evalRec $ body:[]) (ds++ldef++currDefs) of
+       Right (_,res) -> pure $ last res
        Left s        -> oops $ "local eval err: " ++ s
     Nothing -> oops $ "unknow function is called: " ++ show v
+
+
+evalLambdaCall :: SchemeValue -> Eval SchemeValue
+evalLambdaCall (SchemeLambdaCall l args) = do
+  l' <- eval l
+  case l' of
+    (SchemeLambda (Lambda params ldef body)) -> do
+      currDefs <- get
+      ds <- match args params
+
+      case runEval (evalRec $ body:[]) (ds++ldef++currDefs) of
+       Right (_,res) -> pure $ last res
+       Left s        -> oops $ "local eval err: " ++ s
+
+
+    _ -> oops $ "trying to call a non-function: " ++ show l
+
 
 
 match :: [SchemeValue] -> [String] -> Eval [Definition]
 -- match args params
 match (a:as) (p:ps) = do
   a' <- case a of
-    SchemeDefinition (Definition _ l) -> 
+    SchemeDefinition (Definition _ l) ->
       pure $ Definition p l
     _ -> do
       a' <- eval a
@@ -114,12 +128,12 @@ match (a:as) (p:ps) = do
   xs <- match as ps
   pure $ a' : xs
 match [] [] = pure []
-match [] ps  = oops $ "match: args are not enough, unused params: " ++ show ps 
-match as []  = oops $ "match: params are not enough, unused args: " ++ show as 
+match [] ps  = oops $ "match: args are not enough, unused params: " ++ show ps
+match as []  = oops $ "match: params are not enough, unused args: " ++ show as
 
 
 isBuildin :: SchemeValue -> Bool
-isBuildin (SchemeFunctionCall s _) = s `elem` ["+", "*", "car", "cdr", "cons", "eq?"] 
+isBuildin (SchemeFunctionCall s _) = s `elem` ["+", "*", "car", "cdr", "cons", "eq?"]
 
 
 evalBuildin :: SchemeValue -> Eval SchemeValue
@@ -142,8 +156,8 @@ evalBuildinPlus (x:xs) = do
     SchemeDouble i -> case xs' of
       SchemeDouble j -> pure $ SchemeDouble $ i + j
       SchemeInteger j -> pure $ SchemeDouble $ i + fromIntegral j
-       
-    _ -> oops $ "cannot sum non-number: " ++ show x  
+
+    _ -> oops $ "cannot sum non-number: " ++ show x
 evalBuildinPlus [] = pure $ SchemeInteger 0
 
 evalBuildinProd :: [SchemeValue] -> Eval SchemeValue
@@ -157,8 +171,8 @@ evalBuildinProd (x:xs) = do
     SchemeDouble i -> case xs' of
       SchemeDouble j -> pure $ SchemeDouble $ i * j
       SchemeInteger j -> pure $ SchemeDouble $ i * fromIntegral j
-       
-    _ -> oops $ "cannot sum non-number: " ++ show x  
+
+    _ -> oops $ "cannot sum non-number: " ++ show x
 evalBuildinProd [] = pure $ SchemeInteger 1
 
 evalBuildinCar :: [SchemeValue] -> Eval SchemeValue
@@ -166,7 +180,7 @@ evalBuildinCar (x:[]) = do
   x' <- eval x
   case x' of
     SchemeList l -> pure $ head l
-    _ -> oops $ "non-list argument to car: " ++ show x 
+    _ -> oops $ "non-list argument to car: " ++ show x
 evalBuildinCar xs = oops $ "more than one argument to car: " ++ show xs
 
 
@@ -194,7 +208,12 @@ evalBuildinEq (x:y:[]) = do
   y' <- eval y
   pure $ SchemeBool $ x' == y'
 evalBuildinEq xs = oops $ "eq? wrong number of arguments: " ++ show xs
- 
+
+evalLambda :: SchemeValue -> Eval SchemeValue
+evalLambda (SchemeLambda (Lambda ps ds b)) = do
+  currDefs <- get
+  pure $ SchemeLambda $ Lambda ps (ds++currDefs) b
+
 
 eval :: SchemeValue -> Eval SchemeValue
 eval v@(SchemeBool _) = pure v
@@ -203,26 +222,27 @@ eval v@(SchemeDouble _) = pure v
 eval v@(SchemeString _) = pure v
 eval v@(SchemeSymbol _) = pure v
 eval v@(SchemeList _) = pure v
-eval v@(SchemeLambda _) = pure v
+eval v@(SchemeLambda _) = evalLambda v
 eval v@(SchemeIf _ _ _) = evalIf v
 eval v@(SchemeCond _) = evalCond v
 eval v@(SchemeDefinition _) = evalDefinition v
 eval v@(SchemeSynonym _) = evalSynonym v
 eval v@(SchemeFunctionCall _ _) = evalFunctionCall v
+eval v@(SchemeLambdaCall _ _) = evalLambdaCall v
 
 evalRec :: [SchemeValue] -> Eval [SchemeValue]
 evalRec xs = sequenceA $ map eval xs
 
 
-defaultDefs = 
+defaultDefs =
   [ Definition "else" $ Lambda [] [] (SchemeBool True)
   ]
 
 
 main :: IO ()
-main = do 
-  x <- readFile "test/example2.scm" 
-  putStrLn $ 
+main = do
+  x <- readFile "test/example2.scm"
+  putStrLn $
     case many schemeP `runParser` x of
       Just (s,_) ->
         case runEval (evalRec s) defaultDefs of
@@ -233,7 +253,7 @@ main = do
 
 
 disp :: [SchemeValue] -> String
-disp (SchemeDefinition _:xs) = disp xs 
+disp (SchemeDefinition _:xs) = disp xs
 disp (x:xs) = show x ++ "\n" ++ disp xs
 disp [] = ""
 

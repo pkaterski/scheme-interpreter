@@ -21,6 +21,7 @@ data SchemeValue
   | SchemeDefinition Definition 
   | SchemeLambda Lambda 
   | SchemeFunctionCall String [SchemeValue]
+  | SchemeLambdaCall SchemeValue [SchemeValue]
   deriving (Eq, Show)
 
 data Definition = Definition String Lambda 
@@ -237,6 +238,12 @@ funCallP = bracket do
   args <- many schemeP
   pure $ SchemeFunctionCall func args
 
+lambdaCallP :: Parser SchemeValue
+lambdaCallP = bracket do
+  v <- schemeP
+  args <- many schemeP
+  pure $ SchemeLambdaCall v args 
+
 commentsP :: Parser [()]
 commentsP = many $ do
   ws
@@ -248,6 +255,7 @@ schemeP ::Parser SchemeValue
 schemeP = commentsP *> ws *> asum
   [ boolP
   , funCallP
+  , lambdaCallP
   , doubleP
   , integerP
   , schemeStringP
