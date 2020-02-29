@@ -43,7 +43,7 @@ searchDefinition s (d@(SchemeDefinition s' args body):ds) =
     [] -> Just body 
     _  -> Just d -- TODO: Lambda 
   else searchDefinition s ds
-searchDefinition _ _ = error "impossible, state contains thing that are not definitions"
+searchDefinition _ _ = error "impossible, state contains a non-definition"
 
 isDefined :: String -> [SchemeValue] -> Bool
 isDefined s ds = case searchDefinition s ds of
