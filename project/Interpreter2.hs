@@ -202,6 +202,7 @@ eval v@(SchemeDouble _) = pure v
 eval v@(SchemeString _) = pure v
 eval v@(SchemeSymbol _) = pure v
 eval v@(SchemeList _) = pure v
+eval v@(SchemeLambda _) = pure v
 eval v@(SchemeIf _ _ _) = evalIf v
 eval v@(SchemeCond _) = evalCond v
 eval v@(SchemeDefinition _ _) = evalDefinition v
