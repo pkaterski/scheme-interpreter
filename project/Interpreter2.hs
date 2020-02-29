@@ -244,7 +244,7 @@ defaultDefs =
 
 main :: IO ()
 main = do
-  x <- readFile "test/example2.scm"
+  x <- readFile "test/numerals.scm"
   putStrLn $
     case many schemeP `runParser` x of
       Just (s,_) ->

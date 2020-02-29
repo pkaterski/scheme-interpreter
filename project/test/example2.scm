@@ -92,6 +92,7 @@ o
 (define (ax x) (lambda (x) x))
 ((ax 33) 77)
 
+; scheme evaluetes this to 10, but we to 88
 (define (j x) (define x 10) x)
 (j 88)
 
