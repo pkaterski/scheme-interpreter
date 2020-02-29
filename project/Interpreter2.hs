@@ -37,11 +37,11 @@ oops err = Eval \s -> Left $ err ++ "\n the env is:\n" ++ show s
 
 searchDefinition :: String -> [SchemeValue] -> Maybe SchemeValue
 searchDefinition _ [] = Nothing
-searchDefinition s (d@(SchemeDefinition s' (Lambda args body)):ds) = 
+searchDefinition s (SchemeDefinition s' l@(Lambda args body):ds) = 
   if s == s'
   then case args of
     [] -> Just body 
-    _  -> Just d -- TODO: Lambda 
+    _  -> Just $ SchemeLambda l 
   else searchDefinition s ds
 searchDefinition _ _ = error "impossible, state contains a non-definition"
 
@@ -92,7 +92,7 @@ evalFunctionCall v@(SchemeFunctionCall s args) =
   else do
   currDefs <- get
   case searchDefinition s currDefs of
-    Just d@(SchemeDefinition _ (Lambda params body)) -> do
+    Just (SchemeLambda (Lambda params body)) -> do
       ds <- match args params
       -- putting defs on top, because def searching algo only finds the defs on top, so this will rewrite them :)
       case runEval (eval body) (ds++currDefs) of
