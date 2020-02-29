@@ -104,9 +104,14 @@ evalFunctionCall v@(SchemeFunctionCall s args) =
 match :: [SchemeValue] -> [String] -> Eval [SchemeValue]
 -- match args params
 match (a:as) (p:ps) = do
-  a' <- eval a
+  a' <- case a of
+    SchemeDefinition _ l -> 
+      pure $ SchemeDefinition p l
+    _ -> do
+      a' <- eval a
+      pure $ SchemeDefinition p (Lambda [] a')
   xs <- match as ps
-  pure $ SchemeDefinition p (Lambda [] a') : xs
+  pure $ a' : xs
 match [] [] = pure []
 match [] ps  = oops $ "match: args are not enough, unused params: " ++ show ps 
 match as []  = oops $ "match: params are not enough, unused args: " ++ show as 
