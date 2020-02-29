@@ -71,3 +71,17 @@
 
 (reverse '(a b c))
 
+(define t (lambda x (x 5)))
+;(define (t x) (x 5))
+(t (lambda x (+ x 11)))
+
+
+(define (loc x) 
+  (define y 10) 
+  (define z 7) 
+  (+ x y z))
+(loc 10)
+(define o 9)
+o
+; z ; local var is undefined here
+
