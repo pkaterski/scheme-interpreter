@@ -96,6 +96,9 @@ evalFunctionCall v@(SchemeFunctionCall s args) =
       case runEval (evalRec $ body:[]) (ds++ldef++currDefs) of
        Right (_,res) -> pure $ last res
        Left s        -> oops $ "local eval err: " ++ s
+    Just s -> do -- really strange. TODO: look at this
+      l <- eval s
+      evalLambdaCall (SchemeLambdaCall l args)
     Nothing -> oops $ "unknow function is called: " ++ show v
 
 
