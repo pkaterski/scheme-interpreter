@@ -80,7 +80,7 @@ evalSynonym :: SchemeValue -> Eval SchemeValue
 evalSynonym v@(SchemeSynonym s) = do
   currDefs <- get
   case searchDefinition s currDefs of
-    Just d -> pure d
+    Just d -> eval d
     Nothing -> oops $ "unknow variable used: " ++ show v
 
 
@@ -96,9 +96,7 @@ evalFunctionCall v@(SchemeFunctionCall s args) =
       case runEval (evalRec $ body:[]) (ds++ldef++currDefs) of
        Right (_,res) -> pure $ last res
        Left s        -> oops $ "local eval err: " ++ s
-    Just s -> do -- really strange. TODO: look at this
-      l <- eval s
-      evalLambdaCall (SchemeLambdaCall l args)
+    Just s -> oops $ "unexpected value in definition: " ++ show s
     Nothing -> oops $ "unknow function is called: " ++ show v
 
 
