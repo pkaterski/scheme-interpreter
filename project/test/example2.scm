@@ -96,6 +96,10 @@ o
 (define (j x) (define x 10) x)
 (j 88)
 
+(define k (+ -11 -12))
+(define test ((lambda (x) (x 10)) (lambda (x) (+ x 11 k))))
+test
+
 
 
 
