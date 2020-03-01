@@ -100,6 +100,13 @@ o
 (define test ((lambda (x) (x 10)) (lambda (x) (+ x 11 k))))
 test
 
+(define add (lambda (x) (lambda (y) (+ x y))))
+((add 1) 2)
+((lambda (x) ((lambda (x) ((add 3) x)) x)) 10)
+
+((lambda (x) ((add 3) x)) 10)
+
+
 
 
 
