@@ -107,11 +107,9 @@ evalLambdaCall (SchemeLambdaCall l args) = do
     (SchemeLambda (Lambda params ldef body)) -> do
       currDefs <- get
       ds <- match args params
-
       case runEval (evalRec $ body:[]) (ds++ldef++currDefs) of
        Right (_,res) -> pure $ last res
        Left s        -> oops $ "local eval err: " ++ s
-
 
     _ -> oops $ "trying to call a non-function: " ++ show l
 
@@ -120,12 +118,14 @@ evalLambdaCall (SchemeLambdaCall l args) = do
 match :: [SchemeValue] -> [String] -> Eval [Definition]
 -- match args params
 match (a:as) (p:ps) = do
+  
   a' <- case a of
     SchemeDefinition (Definition _ l) ->
       pure $ Definition p l
     _ -> do
       a' <- eval a
       pure $ Definition p (Lambda [] [] a')
+
   xs <- match as ps
   pure $ a' : xs
 match [] [] = pure []
