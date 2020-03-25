@@ -1,6 +1,6 @@
-; this is deprecated
+; #lang racket
 (define (fact n)
-  (if (eq? 0.0 n)
+  (if (eq? 0 n)
       1
       (* n (fact (+ n -1)))))
 
@@ -29,7 +29,7 @@
 (c f h 5)
 
 (define (pow n m)
-  (if (eq? m 0.0)
+  (if (eq? m 0)
       1
       (* n (pow n (+ m -1)))))
 
@@ -37,8 +37,8 @@
 
 (define (A m n)
     (cond
-        ((eq? m 0.0) (+ n 1))
-        ((eq? n 0.0) (A (+ m -1) 1))
+        ((eq? m 0) (+ n 1))
+        ((eq? n 0) (A (+ m -1) 1))
         (else (A (+ m -1) (A m (+ n -1))))))
 
 (A 3 2)
@@ -51,7 +51,7 @@
 (cons 5 (cons 1.9 '()))
 
 (define (range n)
-  (if (eq? n 0.0)
+  (if (eq? n 0)
       '()
       (cons n (range (+ n -1)))))
 
@@ -71,4 +71,48 @@
       (append (reverse (cdr xs)) (cons (car xs) '()))))
 
 (reverse '(a b c))
+
+(define t (lambda (x) (x 5)))
+;(define (t x) (x 5))
+(t (lambda (x) (+ x 11)))
+
+
+(define (loc x) 
+  (define y 10) 
+  (define z 7) 
+  (+ x y z))
+(loc 10)
+(define o 9)
+o
+; z ; local var is undefined here
+
+(define (plusn n) (lambda (x) (+ n x)))
+((plusn 3) 5)
+
+(define (ax x) (lambda (x) x))
+((ax 33) 77)
+
+; scheme evaluetes this to 10, but we to 88
+(define (j x) (define x 10) x)
+(j 88)
+
+(define k (+ -11 -12))
+(define test ((lambda (x) (x 10)) (lambda (x) (+ x 11 k))))
+test
+
+(define add (lambda (x) (lambda (y) (+ x y))))
+((add 1) 2)
+((lambda (x) ((lambda (x) ((add 3) x)) x)) 10)
+
+((lambda (x) ((add 3) x)) 10)
+
+(eval '(fact 10))
+(eval '(define thisIsEvalTest 123))
+(eval '(eq? thisIsEvalTest 123))
+
+
+
+
+
+
 
