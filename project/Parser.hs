@@ -18,13 +18,13 @@ data SchemeValue
   | SchemeVariable String
   | SchemeIf SchemeValue SchemeValue SchemeValue
   | SchemeCond [(SchemeValue,SchemeValue)]
-  | SchemeDefinition Definition 
-  | SchemeLambda Lambda 
+  | SchemeDefinition Definition
+  | SchemeLambda Lambda
   | SchemeFunctionCall String [SchemeValue]
   | SchemeLambdaCall SchemeValue [SchemeValue]
   deriving (Eq, Show)
 
-data Definition = Definition String Lambda 
+data Definition = Definition String Lambda
   deriving (Eq, Show)
 
 data Lambda = Lambda [String] [Definition] SchemeValue
@@ -179,7 +179,7 @@ listP = do
 
 
 
-defP :: Parser Definition 
+defP :: Parser Definition
 defP = bracket do
   isWord "define"
   ws
@@ -209,7 +209,7 @@ lambdaP = bracket do
   where
     syn = do
       ws
-      v <- some (charP isLetter) 
+      v <- some (charP isLetter)
       ws
       pure v
 
@@ -242,7 +242,7 @@ lambdaCallP :: Parser SchemeValue
 lambdaCallP = bracket do
   v <- schemeP
   args <- many schemeP
-  pure $ SchemeLambdaCall v args 
+  pure $ SchemeLambdaCall v args
 
 commentsP :: Parser [()]
 commentsP = many $ do
