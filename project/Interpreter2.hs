@@ -177,31 +177,72 @@ evalBuildinProd (x:xs) = do
 evalBuildinProd [] = pure $ SchemeInteger 1
 
 evalBuildinCar :: [SchemeValue] -> Eval SchemeValue
-evalBuildinCar (x:[]) = do
-  x' <- eval x
-  case x' of
-    SchemeList l -> pure $ head l
-    _ -> oops $ "non-list argument to car: " ++ show x
-evalBuildinCar xs = oops $ "more than one argument to car: " ++ show xs
+evalBuildinCar (v : []) = do
+  v' <- eval v
+  case v' of
+    SchemeQuote xs -> do
+      case runParser inside xs of
+        Just (s, _)  -> do
+          case runParser purevals s of
+            Just (x, []) -> pure x
+            _            -> pure $ SchemeSymbol s
+        Nothing -> oops $ "cannot car `unparsable`:" ++ xs
+    _ -> oops $ "car arg not quote: " ++ show v'
+  where
+    inside = bracket do
+      x <-  some $ charP $ liftA2 (&&) (/=' ') (/=')')
+      many $ charP (/=')')
+      pure x
+
+    purevals =
+          boolP
+      <|> doubleP
+      <|> integerP
+      <|> symbolP
+evalBuildinCar xs = oops $ "car different than one args: " ++ show xs
 
 
 evalBuildinCdr :: [SchemeValue] -> Eval SchemeValue
-evalBuildinCdr (x:[]) = do
-  x' <- eval x
-  case x' of
-    SchemeList l -> pure $ SchemeList $ tail l
-    _ -> oops $ "non-list argument to cdr: " ++ show x
-evalBuildinCdr xs = oops $ "more than one argument to cdr: " ++ show xs
+evalBuildinCdr (v : []) = do
+  v' <- eval v
+  case v' of
+    SchemeQuote xs ->
+      case runParser inside xs of
+        Just (s, _)  -> pure $ SchemeQuote s
+        Nothing -> oops $ "cannot car `unparsable`:" ++ xs
+    _ -> oops $ "cdr not quote: " ++ show v'
+  where
+    inside = bracket do
+      some $ charP $ liftA2 (&&) (/=' ') (/=')')
+      ws
+      x <- many $ charP (/=')')
+      pure $ '(' : x ++ ")"
+evalBuildinCdr xs = oops $ "cdr different than one args: " ++ show xs
 
 
 evalBuildinCons :: [SchemeValue] -> Eval SchemeValue
-evalBuildinCons (x:ys:[]) = do
+evalBuildinCons (x : v : []) = do
   x' <- eval x
-  ys' <- eval ys
-  case ys' of
-    SchemeList ls -> pure $ SchemeList (x':ls)
-    _ -> oops $ "cons to non-schemelist: " ++ show ys
+  v' <- eval v
+  case v' of
+    SchemeQuote s -> 
+
+      case x' of
+        SchemeInteger i -> insert (show i) s
+        SchemeDouble i  -> insert (show i) s
+        SchemeString i  -> insert i s
+        SchemeSymbol i  -> insert i s
+        SchemeQuote i   -> insert i s
+        x               -> oops $ "cons to unsupported type: " ++ show x
+
+    _ -> oops $ "cons only works with quotes (pair not supported yet): " ++ show x
+  where
+    insert first ('(':")") = pure $ SchemeQuote $ "(" ++ first  ++ ")"
+    insert first ('(':xs)  = pure $ SchemeQuote $ "(" ++ first ++ " " ++ xs
+    insert _ xs = oops $ "cons only works with quotes (pair not supported yet): " ++ show xs
+
 evalBuildinCons xs = oops $ "cons wrong number of arguments: " ++ show xs
+
 
 evalBuildinEq :: [SchemeValue] -> Eval SchemeValue
 evalBuildinEq (x:y:[]) = do
@@ -222,7 +263,7 @@ eval v@(SchemeInteger _) = pure v
 eval v@(SchemeDouble _) = pure v
 eval v@(SchemeString _) = pure v
 eval v@(SchemeSymbol _) = pure v
-eval v@(SchemeList _) = pure v
+eval v@(SchemeQuote _) = pure v
 eval v@(SchemeLambda _) = evalLambda v
 eval v@(SchemeIf _ _ _) = evalIf v
 eval v@(SchemeCond _) = evalCond v

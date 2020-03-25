@@ -13,8 +13,8 @@ data SchemeValue
   | SchemeInteger Integer
   | SchemeDouble Double
   | SchemeString String
-  | SchemeSymbol String -- for lists
-  | SchemeList [SchemeValue]
+  | SchemeSymbol String
+  | SchemeQuote String
   | SchemeVariable String
   | SchemeIf SchemeValue SchemeValue SchemeValue
   | SchemeCond [(SchemeValue,SchemeValue)]
@@ -30,7 +30,7 @@ data Definition = Definition String Lambda
 data Lambda = Lambda [String] [Definition] SchemeValue
   deriving (Eq, Show)
 
-
+-- TODO: change to String -> Maybe (String, a) ???
 newtype Parser a = Parser {runParser :: String -> Maybe (a,String)}
 
 instance Functor Parser where
@@ -156,27 +156,29 @@ condP = bracket do
       <$> schemeP
       <*> schemeP
 
--- is this usefull. scheme supports it but idk
+
 symbolP :: Parser SchemeValue
 symbolP = do
   xs <- some $ charP isLetter
   ys <- many $ charP $ liftA2 (||) isLetter isDigit
   return $ SchemeSymbol (xs++ys)
 
-listP :: Parser SchemeValue
-listP = do
-    charP (=='\'')
-    vs <- bracket $ many vals
-    return $ SchemeList vs
-  where
-    purevals =
-          boolP
-      <|> doubleP
-      <|> integerP
-      <|> symbolP
-      <|> fmap SchemeList do bracket $ many vals
-    vals = ws *> purevals <* ws
 
+
+quoteP :: Parser SchemeValue
+quoteP = do
+  charP (=='\'')
+  SchemeQuote <$> do bracketed <|> oneVal
+  where
+
+    bracketed = do
+      ws
+      open   <- charP (=='(')
+      middle <- many $ charP (/=')')
+      close  <- charP (==')')
+      pure $ open : middle ++ [close]
+
+    oneVal = some $ charP (/=' ')
 
 
 defP :: Parser Definition
@@ -258,10 +260,10 @@ schemeP = commentsP *> ws *> asum
   , lambdaCallP
   , doubleP
   , integerP
+  , quoteP
   , schemeStringP
   , SchemeVariable <$> varP
   , condP
-  , listP
   , ifP
   , SchemeDefinition <$> defP
   , lambdaP
