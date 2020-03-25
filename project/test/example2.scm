@@ -106,6 +106,10 @@ test
 
 ((lambda (x) ((add 3) x)) 10)
 
+(eval '(fact 10))
+(eval '(define thisIsEvalTest 123))
+(eval '(eq? thisIsEvalTest 123))
+
 
 
 

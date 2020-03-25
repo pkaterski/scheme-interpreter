@@ -134,7 +134,7 @@ match as []  = oops $ "match: params are not enough, unused args: " ++ show as
 
 
 isBuildin :: SchemeValue -> Bool
-isBuildin (SchemeFunctionCall s _) = s `elem` ["+", "*", "car", "cdr", "cons", "eq?"]
+isBuildin (SchemeFunctionCall s _) = s `elem` ["+", "*", "car", "cdr", "cons", "eq?", "eval"]
 
 
 evalBuildin :: SchemeValue -> Eval SchemeValue
@@ -144,6 +144,19 @@ evalBuildin (SchemeFunctionCall "car" xs) = evalBuildinCar xs
 evalBuildin (SchemeFunctionCall "cdr" xs) = evalBuildinCdr xs
 evalBuildin (SchemeFunctionCall "cons" xs) = evalBuildinCons xs
 evalBuildin (SchemeFunctionCall "eq?" xs) = evalBuildinEq xs
+evalBuildin (SchemeFunctionCall "eval" xs) = evalBuildinEval xs
+
+
+evalBuildinEval :: [SchemeValue] -> Eval SchemeValue
+evalBuildinEval (x:[]) = do
+  x' <- eval x
+  case x' of
+    SchemeQuote xs -> do
+      case runParser schemeP xs of
+        Just (v,_) -> eval v
+        _          -> oops $ "eval can't parse: " ++ xs
+    _              -> oops $ "eval only works with quotes: " ++ show x'
+evalBuildinEval xs  = oops $ "eval too many args: " ++ show xs
 
 
 evalBuildinPlus :: [SchemeValue] -> Eval SchemeValue
@@ -283,7 +296,7 @@ defaultDefs =
 
 main :: IO ()
 main = do
-  x <- readFile "test/numerals.scm"
+  x <- readFile "test/example2.scm"
   putStrLn $
     case many schemeP `runParser` x of
       Just (s,_) ->
