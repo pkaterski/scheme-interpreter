@@ -77,7 +77,7 @@ evalDefinition (SchemeDefinition v@(Definition s _)) = do
        pure $ SchemeDefinition v
 
 evalSynonym :: SchemeValue -> Eval SchemeValue
-evalSynonym v@(SchemeSynonym s) = do
+evalSynonym v@(SchemeVariable s) = do
   currDefs <- get
   case searchDefinition s currDefs of
     Just d -> eval d
@@ -227,7 +227,7 @@ eval v@(SchemeLambda _) = evalLambda v
 eval v@(SchemeIf _ _ _) = evalIf v
 eval v@(SchemeCond _) = evalCond v
 eval v@(SchemeDefinition _) = evalDefinition v
-eval v@(SchemeSynonym _) = evalSynonym v
+eval v@(SchemeVariable _) = evalSynonym v
 eval v@(SchemeFunctionCall _ _) = evalFunctionCall v
 eval v@(SchemeLambdaCall _ _) = evalLambdaCall v
 

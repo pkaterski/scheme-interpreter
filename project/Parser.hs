@@ -15,7 +15,7 @@ data SchemeValue
   | SchemeString String
   | SchemeSymbol String -- for lists
   | SchemeList [SchemeValue]
-  | SchemeSynonym String -- any non-keyword
+  | SchemeVariable String
   | SchemeIf SchemeValue SchemeValue SchemeValue
   | SchemeCond [(SchemeValue,SchemeValue)]
   | SchemeDefinition Definition 
@@ -133,8 +133,8 @@ forbidden = ["if", "cond", "define", "lambda"]
 notKeyword :: String -> Bool
 notKeyword x =  x `notElem` forbidden
 
-synonymP :: Parser String
-synonymP = do
+varP :: Parser String
+varP = do
   ws
 
   x <- charP isLetter
@@ -183,8 +183,8 @@ defP :: Parser Definition
 defP = bracket do
   isWord "define"
   ws
-  let idents = Right <$> bracket (some synonymP)
-      singleIdent = Left <$> synonymP
+  let idents = Right <$> bracket (some varP)
+      singleIdent = Left <$> varP
 
   params <- singleIdent <|> idents
   ws
@@ -259,7 +259,7 @@ schemeP = commentsP *> ws *> asum
   , doubleP
   , integerP
   , schemeStringP
-  , SchemeSynonym <$> synonymP
+  , SchemeVariable <$> varP
   , condP
   , listP
   , ifP
