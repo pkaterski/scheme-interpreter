@@ -118,7 +118,7 @@ evalLambdaCall (SchemeLambdaCall l args) = do
 match :: [SchemeValue] -> [String] -> Eval [Definition]
 -- match args params
 match (a:as) (p:ps) = do
-  
+
   a' <- case a of
     SchemeDefinition (Definition _ l) ->
       pure $ Definition p l
@@ -242,7 +242,7 @@ evalBuildinCons (x : v : []) = do
   x' <- eval x
   v' <- eval v
   case v' of
-    SchemeQuote s -> 
+    SchemeQuote s ->
 
       case x' of
         SchemeInteger i -> insert (show i) s
