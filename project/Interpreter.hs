@@ -95,7 +95,7 @@ evalFunctionCall v@(SchemeFunctionCall s args) =
       ds <- match args params
       case runEval (evalRec $ body:[]) (ds++ldef++currDefs) of
        Right (_,res) -> pure $ last res
-       Left s        -> oops $ "local eval err: " ++ s
+       Left s        -> oops s-- oops $ "local eval err: " ++ s
     Just s -> oops $ "unexpected value in definition: " ++ show s
     Nothing -> oops $ "unknow function is called: " ++ show v
 
