@@ -10,10 +10,10 @@
       ys
       (cons (car xs) (append (cdr xs) ys))))
 
-(define (reverse xs)
-  (if (eq? xs '())
-      '()
-      (append (reverse (cdr xs)) (cons (car xs) '()))))
+; (define (reverse xs)
+;   (if (eq? xs '())
+;       '()
+;       (append (reverse (cdr xs)) (cons (car xs) '()))))
 
 (define (foldl f nv xs)
     (if (eq? xs '())
@@ -25,6 +25,11 @@
         nv
         (f (car xs) (foldr f nv (cdr xs)))))
 
+(define (reverse xs)
+    (foldl 
+    (lambda (acc x) (cons x acc))
+    '()
+    xs))
 
 (define (map g xs)
     (foldr 
@@ -40,3 +45,10 @@
                 rec))
         '()
         xs))
+
+(define (factoriel n)
+    (if (eq? n 0)
+        1
+        (* n (factoriel (+ n -1)))))
+
+
