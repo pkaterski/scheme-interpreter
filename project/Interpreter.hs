@@ -203,7 +203,8 @@ evalBuildinCar (v : []) = do
     _ -> oops $ "car arg not quote: " ++ show v'
   where
     inside = bracket do
-      x <-  some $ charP $ liftA2 (&&) (/=' ') (/=')')
+      x <-  bracketed <|> do 
+        some $ charP $ liftA3 (\x y z -> x&&y&&z) (/=' ') (/='(') (/=')')
       many $ charP (/=')')
       pure x
 
@@ -222,14 +223,17 @@ evalBuildinCdr (v : []) = do
     SchemeQuote xs ->
       case runParser inside xs of
         Just (s, _)  -> pure $ SchemeQuote s
-        Nothing -> oops $ "cannot car `unparsable`:" ++ xs
+        Nothing -> oops $ "cannot cdr `unparsable`:" ++ xs
     _ -> oops $ "cdr not quote: " ++ show v'
   where
     inside = bracket do
-      some $ charP $ liftA2 (&&) (/=' ') (/=')')
+      bracketed <|> symbol
       ws
-      x <- many $ charP (/=')')
+      x <- mconcat <$> many do bracketed <|> symbols
       pure $ '(' : x ++ ")"
+
+    symbols = some $ charP $ liftA2 (&&)  (/='(') (/=')')
+    symbol = some $ charP $ liftA3 (\x y z -> x&&y&&z) (/=' ') (/='(') (/=')')
 evalBuildinCdr xs = oops $ "cdr different than one args: " ++ show xs
 
 
