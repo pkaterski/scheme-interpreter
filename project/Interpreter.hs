@@ -252,13 +252,13 @@ evalBuildinCons (x : v : []) = do
         SchemeString i  -> insert i s
         SchemeSymbol i  -> insert i s
         SchemeQuote i   -> insert i s
-        x               -> oops $ "cons to unsupported type: " ++ show x
+        _               -> oops $ "cons to unsupported type: " ++ show x'
 
-    _ -> oops $ "cons only works with quotes (pair not supported yet): " ++ show x
+    _ -> oops $ "cons only works with quotes (pair not supported yet): " ++ show v'
   where
     insert first ('(':")") = pure $ SchemeQuote $ "(" ++ first  ++ ")"
     insert first ('(':xs)  = pure $ SchemeQuote $ "(" ++ first ++ " " ++ xs
-    insert _ xs = oops $ "cons only works with quotes (pair not supported yet): " ++ show xs
+    insert _ xs = oops $ "cons only works with quotes (pair not supported yet) `unparsed`: " ++ show xs
 
 evalBuildinCons xs = oops $ "cons wrong number of arguments: " ++ show xs
 
