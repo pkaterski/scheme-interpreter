@@ -335,3 +335,14 @@ runREPL defs = do
     _ -> do
       putStrLn "bad syntax"
       runREPL defs
+
+runExpression :: String -> State -> (String, State)
+runExpression line defs =
+    case many schemeP `runParser` line of
+    Just (parsed,[]) ->
+
+      case runEval (evalRec parsed) defs of
+        Right (defs', res) -> (disp res, defs')
+        Left err           -> (err, defs)
+
+    _ -> ("bad syntax\n", defs)
