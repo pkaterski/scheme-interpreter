@@ -22,7 +22,28 @@ data SchemeValue
   | SchemeLambda Lambda
   | SchemeFunctionCall String [SchemeValue]
   | SchemeLambdaCall SchemeValue [SchemeValue]
-  deriving (Eq, Show)
+  deriving Eq
+
+instance Show SchemeValue where
+  show (SchemeBool       v) = show v
+  show (SchemeInteger    v) = show v
+  show (SchemeDouble     v) = show v
+  show (SchemeString     v) = show v
+  show (SchemeSymbol     v) = "'" ++ v
+  show (SchemeQuote      v) = "'" ++ v
+  show (SchemeVariable   v) = "var " ++ show v
+  show (SchemeLambda     v) = show v
+  show (SchemeDefinition v) = show v
+  show (SchemeIf p t f) =
+    "if (" ++ show p ++ ") then: "
+    ++ show t
+    ++ " else: " ++ show f
+  show (SchemeCond conds) =
+    "cond " ++ show conds
+  show (SchemeFunctionCall f args)  =
+    "call " ++ show f ++ " with args " ++ show args
+  show (SchemeLambdaCall lamb args) =
+    "call (" ++ show lamb ++ ") with args " ++ show args
 
 data Definition = Definition String Lambda
   deriving (Eq, Show)
