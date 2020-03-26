@@ -189,17 +189,25 @@ symbolP = do
 quoteP :: Parser SchemeValue
 quoteP = do
   charP (=='\'')
+  ws
   SchemeQuote <$> do bracketed <|> oneVal
   where
+    oneVal = 
+      some 
+      $ charP 
+      $ liftA3 (\x y z -> x&&y&&z) 
+      (/=' ') (/='(') (/=')')
 
-    bracketed = do
-      ws
-      open   <- charP (=='(')
-      middle <- many $ charP (/=')')
-      close  <- charP (==')')
-      pure $ open : middle ++ [close]
+-- parse while patching brackets!
+bracketed :: Parser String
+bracketed = bracket do
 
-    oneVal = some $ charP (/=' ')
+  start <- mconcat <$> many bracketed
+  middle <- many $ charP $ liftA2 (&&) (/='(') (/=')')
+  end <- mconcat <$> many bracketed
+
+  pure $ "("  ++ start ++ middle ++ end ++ ")"
+
 
 
 defP :: Parser Definition
