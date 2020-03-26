@@ -25,13 +25,6 @@
         nv
         (f (car xs) (foldr f nv (cdr xs)))))
 
-(foldl (lambda (acc x) (+ acc x)) 0 (range 100))
-(foldr (lambda (x rec) (+ x rec)) 0 (range 100))
-
-(foldl (lambda (acc x) (cons x acc)) '() (range 10))
-(foldr (lambda (x rec) (append rec (cons x '()))) '() (range 10))
-
-; (append (reverse (range 5)) (range 4))
 
 (define (map g xs)
     (foldr 
@@ -47,6 +40,3 @@
                 rec))
         '()
         xs))
-
-(reverse (map (lambda (x) (* x x)) (range 10)))
-(reverse (filter (lambda (x) (eq? x 5)) (range 10)))
