@@ -205,7 +205,7 @@ evalBuildinCar (v : []) = do
     _ -> oops $ "car arg not quote: " ++ show v'
   where
     inside = bracket do
-      x <-  bracketed <|> do 
+      x <-  bracketed <|> do
         some $ charP $ liftA3 (\x y z -> x&&y&&z) (/=' ') (/='(') (/=')')
       many $ charP (/=')')
       pure x
