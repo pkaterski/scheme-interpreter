@@ -192,10 +192,10 @@ quoteP = do
   ws
   SchemeQuote <$> do bracketed <|> oneVal
   where
-    oneVal = 
-      some 
-      $ charP 
-      $ liftA3 (\x y z -> x&&y&&z) 
+    oneVal =
+      some
+      $ charP
+      $ liftA3 (\x y z -> x&&y&&z)
       (/=' ') (/='(') (/=')')
 
 -- parse while patching brackets!
