@@ -7,4 +7,4 @@ The Folder Structure:
 * The other folders are Scheme and Haskell tasks
     - `00` & `01` Scheme
     - `02` & `03` Haskell
-    - `scheme-interpreter` is the interpreted configured with stack
+    - `scheme-interpreter` is the interpreter configured with stack
