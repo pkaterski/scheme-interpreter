@@ -2,10 +2,25 @@ module Main where
 
 import System.Console.Haskeline
 import System.Environment
-import Interpreter (State, interpretFile, runExpression, defaultDefs)
+import Interpreter (State, Eval, interpretFile, get, runExpression, defaultDefs)
+import Parser (Definition(..))
+import Data.List
+
+searchFunc :: State -> String -> [Completion]
+searchFunc defs str =
+    map simpleCompletion $ filter (str `isPrefixOf`) $ defsToNames defs
+
+defsToNames :: State -> [String]
+defsToNames = map $ \(Definition name _) -> name
 
 mySettings :: Settings IO
-mySettings = defaultSettings {historyFile = Just "myhist"}
+mySettings = Settings 
+    { historyFile = Just "myhist"
+    , complete = completeWord Nothing " \t" $ \str -> do
+        -- defs <- get
+        pure $ searchFunc defaultDefs str
+    , autoAddHistory = True
+    }
 
 main :: IO ()
 main = do
@@ -19,6 +34,7 @@ main = do
     loop :: State -> InputT IO ()
     loop defs = do
         minput <- getInputLine "> "
+        -- defs <- get
         case minput of
             Nothing -> return ()
             Just ":quit" -> return ()
