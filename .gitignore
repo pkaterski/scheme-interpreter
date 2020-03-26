@@ -11,3 +11,4 @@ project/Interpreter.hi
 project/Interpreter.o
 project/Parser.hi
 project/Parser.o
+scheme-interpreter/myhist
