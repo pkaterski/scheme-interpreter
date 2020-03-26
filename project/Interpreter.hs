@@ -305,7 +305,8 @@ main = do
   lib <- interpretFile "lib/prelude.pisp"
   case lib of
     Right (defs, _)-> do
-      hSetBuffering stdout NoBuffering
+      --hSetBuffering stdout NoBuffering
+      hFlush stdout
       runREPL $ defs ++ defaultDefs
     Left err -> putStrLn $ "err: the Prelude couldn't load: " ++ err
 
