@@ -1,6 +1,8 @@
 {-#LANGUAGE BlockArguments #-}
 {-#LANGUAGE LambdaCase #-}
+{-# OPTIONS_GHC -W #-}
 
+import System.IO
 import Parser
 import Control.Applicative
 
@@ -300,15 +302,12 @@ defaultDefs =
 
 main :: IO ()
 main = do
-  x <- readFile "test/example2.scm"
-  putStrLn $
-    case many schemeP `runParser` x of
-      Just (s,_) ->
-        case runEval (evalRec s) defaultDefs of
-          Right (_, res) -> disp res
-          Left err       -> err
-      Nothing -> "didn't parse"
-  return ()
+  lib <- interpretFile "lib/prelude.pisp"
+  case lib of
+    Right (defs, _)-> do
+      hSetBuffering stdout NoBuffering
+      runREPL $ defs ++ defaultDefs
+    Left err -> putStrLn $ "err: the Prelude couldn't load: " ++ err
 
 
 disp :: [SchemeValue] -> String
@@ -316,3 +315,33 @@ disp (SchemeDefinition _:xs) = disp xs
 disp (x:xs) = show x ++ "\n" ++ disp xs
 disp [] = ""
 
+
+interpretFile :: String -> IO (Either String (State, [SchemeValue]))
+interpretFile path = do
+  content <- readFile path
+  case many schemeP `runParser` content of
+    Just (s,_) ->
+      case runEval (evalRec s) defaultDefs of
+        Right res -> pure $ Right res
+        Left err       -> pure $ Left err
+    Nothing -> pure $ Left "file didn't parse"
+
+
+runREPL :: [Definition] -> IO ()
+runREPL defs = do
+  putStr "> "
+  line <- getLine
+  case many schemeP `runParser` line of
+    Just (parsed,[]) ->
+
+      case runEval (evalRec parsed) defs of
+        Right (defs', res) -> do
+          putStr $ disp res
+          runREPL defs'
+        Left err -> do
+          putStrLn err
+          runREPL defs
+
+    _ -> do
+      putStrLn "bad syntax"
+      runREPL defs
