@@ -171,7 +171,7 @@ evalBuildinPlus (x:xs) = do
       SchemeDouble j -> pure $ SchemeDouble $ i + j
       SchemeInteger j -> pure $ SchemeDouble $ i + fromIntegral j
 
-    _ -> oops $ "cannot sum non-number: " ++ show x
+    _ -> oops $ "cannot sum non-number: " ++ show x'
 evalBuildinPlus [] = pure $ SchemeInteger 0
 
 evalBuildinProd :: [SchemeValue] -> Eval SchemeValue
