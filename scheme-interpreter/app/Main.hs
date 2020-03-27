@@ -14,7 +14,7 @@ defsToNames :: State -> [String]
 defsToNames = map $ \(Definition name _) -> name
 
 mySettings :: State -> Settings IO
-mySettings defs = Settings 
+mySettings defs = Settings
     { historyFile = Just "myhist"
     , complete = completeWord Nothing " \t" $ \str -> do
         pure $ searchFunc defs str
