@@ -1,8 +1,8 @@
 {-#LANGUAGE BlockArguments #-}
 {-#LANGUAGE LambdaCase #-}
-{-# OPTIONS_GHC -W #-}
 
-import System.IO
+module Interpreter where
+
 import Parser
 import Control.Applicative
 
@@ -300,17 +300,6 @@ defaultDefs =
   ]
 
 
-main :: IO ()
-main = do
-  lib <- interpretFile "lib/prelude.pisp"
-  case lib of
-    Right (defs, _)-> do
-      --hSetBuffering stdout NoBuffering
-      hFlush stdout
-      runREPL $ defs ++ defaultDefs
-    Left err -> putStrLn $ "err: the Prelude couldn't load: " ++ err
-
-
 disp :: [SchemeValue] -> String
 disp (SchemeDefinition _:xs) = disp xs
 disp (x:xs) = show x ++ "\n" ++ disp xs
@@ -346,3 +335,14 @@ runREPL defs = do
     _ -> do
       putStrLn "bad syntax"
       runREPL defs
+
+runExpression :: String -> State -> (String, State)
+runExpression line defs =
+    case many schemeP `runParser` line of
+    Just (parsed,[]) ->
+
+      case runEval (evalRec parsed) defs of
+        Right (defs', res) -> (disp res, defs')
+        Left err           -> (err ++ "\n", defs)
+
+    _ -> ("bad syntax\n", defs)
