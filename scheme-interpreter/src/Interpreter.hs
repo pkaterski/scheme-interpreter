@@ -343,6 +343,6 @@ runExpression line defs =
 
       case runEval (evalRec parsed) defs of
         Right (defs', res) -> (disp res, defs')
-        Left err           -> (err, defs)
+        Left err           -> (err ++ "\n", defs)
 
     _ -> ("bad syntax\n", defs)
