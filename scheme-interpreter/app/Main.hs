@@ -1,3 +1,5 @@
+{-# LANGUAGE BlockArguments #-}
+
 module Main where
 
 import System.Console.Haskeline
@@ -11,12 +13,15 @@ searchFunc defs str =
     map simpleCompletion $ filter (str `isPrefixOf`) $ defsToNames defs
 
 defsToNames :: State -> [String]
-defsToNames = map $ \(Definition name _) -> name
+defsToNames = (keywords ++) . map \(Definition name _) -> name
+
+keywords :: [String]
+keywords = ["if", "cond", "define", "lambda"]
 
 mySettings :: State -> Settings IO
 mySettings defs = Settings
     { historyFile = Just "myhist"
-    , complete = completeWord Nothing " \t" $ \str -> do
+    , complete = completeWord Nothing "( \t" \str -> do
         pure $ searchFunc defs str
     , autoAddHistory = True
     }
@@ -38,7 +43,7 @@ main = do
     lib <- interpretFile "lib/prelude.pisp"
     case lib of
         Right (defs, _)-> do
-            loop $ defs ++ defaultDefs
+            loop defs
         Left err -> putStrLn $ "err: the Prelude couldn't load: " ++ err
 
 
