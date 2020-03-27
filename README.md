@@ -1,4 +1,4 @@
-# Some nice FMI FP things
+# Some FMI FP
 
 #### Info
 
