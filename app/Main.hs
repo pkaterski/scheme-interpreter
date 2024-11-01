@@ -40,7 +40,7 @@ loop defs = do
 
 main :: IO ()
 main = do
-    lib <- interpretFile "lib/prelude.pisp"
+    lib <- interpretFile "lib/prelude.scm"
     case lib of
         Right (defs, _)-> do
             loop defs
