@@ -125,8 +125,6 @@ Free to use and modify.
 
 ## Implementation Details
 
-## Implementation Details
-
 The core of the interpreter is built around two simple but powerful abstractions:
 
 ```haskell
