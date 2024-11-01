@@ -14,7 +14,6 @@ This is a Scheme interpreter that implements a subset of Scheme/Lisp functionali
 - Quote support with `car`, `cdr`, and `cons`
 - REPL with command history and tab completion
 - Standard library with essential functions
-- Built with pure functional programming
 
 ## Standard Library
 
