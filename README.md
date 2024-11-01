@@ -40,11 +40,6 @@ The interpreter comes with a standard library (`lib/prelude.scm`) that implement
 ### Running the REPL
 
 ```bash
-cabal run
-```
-
-Or alternatively:
-```bash
 stack run
 ```
 
