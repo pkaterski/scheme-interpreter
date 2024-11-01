@@ -3,12 +3,4 @@ compiled
 *.dep
 *.zo
 *~
-.stack-work
-02/third-hw.cabal
-03/fourth-hw.cabal
-project/Interpreter
-project/Interpreter.hi
-project/Interpreter.o
-project/Parser.hi
-project/Parser.o
-scheme-interpreter/myhist
+.stack-work/
