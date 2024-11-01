@@ -1,4 +1,4 @@
-# Just another scheme-interpreter..
+# Just another scheme-interpreter
 
 A minimalist Scheme interpreter written in Haskell. Built with pure functions and pattern matching.
 
